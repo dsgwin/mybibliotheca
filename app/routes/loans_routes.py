@@ -10,6 +10,15 @@ import logging
 
 from app.infrastructure.kuzu_graph import safe_execute_kuzu_query
 from app.services.personal_metadata_service import personal_metadata_service
+from app.utils.simple_cache import bump_user_library_version
+
+
+def _bump_cache(user_id: str) -> None:
+    """Invalidate the cached library stats and ETag for this user."""
+    try:
+        bump_user_library_version(user_id)
+    except Exception:
+        pass
 
 logger = logging.getLogger(__name__)
 
@@ -118,6 +127,7 @@ def loan_book():
                 'loaned_date':      date.today().isoformat(),
             },
         )
+        _bump_cache(current_user.id)
         flash(f'Book loaned to {loaned_to}.', 'success')
     except Exception as exc:
         logger.error(f"[LOANS] loan failed book={book_id} user={current_user.id}: {exc}")
@@ -140,6 +150,7 @@ def return_book(book_id):
                 'loaned_date':      None,
             },
         )
+        _bump_cache(current_user.id)
         flash('Book marked as returned.', 'success')
     except Exception as exc:
         logger.error(f"[LOANS] return failed book={book_id} user={current_user.id}: {exc}")
