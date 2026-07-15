@@ -84,9 +84,9 @@ ENV WTF_CSRF_ENABLED=True
 ENV KUZU_DB_PATH=/app/data/kuzu
 ENV GRAPH_DATABASE_ENABLED=true
 
-# Cap KuzuDB buffer pool to avoid 8 TiB mmap failure on ARM kernels.
-# Increase if your Pi has more than 4 GB RAM and you want better DB performance.
-ENV KUZU_BUFFER_POOL_SIZE_MB=256
+# Cap KuzuDB max_db_size to avoid 8 TiB mmap failure on ARM kernels.
+# KuzuDB reserves this upfront via sparse mmap; 4 GB is plenty for a personal library.
+ENV KUZU_MAX_DB_SIZE_GB=4
 
 RUN mkdir -p /app/data/kuzu
 VOLUME ["/app/data"]

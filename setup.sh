@@ -74,13 +74,11 @@ if [[ ! -f ".env" ]]; then
         -e "s|your-salt-here|${SALT}|" \
         .env.docker.example > .env
 
-    # On Pi: add the buffer pool cap so KuzuDB doesn't try to mmap 8 TiB
-    if $IS_PI; then
-        if ! grep -q "^KUZU_BUFFER_POOL_SIZE_MB=" .env; then
-            echo "" >> .env
-            echo "# Raspberry Pi: cap KuzuDB buffer pool to avoid mmap failure on ARM kernels" >> .env
-            echo "KUZU_BUFFER_POOL_SIZE_MB=256" >> .env
-        fi
+    # On Pi: ensure KUZU_MAX_DB_SIZE_GB is set (already in example, but make explicit)
+    if $IS_PI && ! grep -q "^KUZU_MAX_DB_SIZE_GB=" .env; then
+        echo "" >> .env
+        echo "# Raspberry Pi: cap KuzuDB mmap reservation to avoid 8 TiB failure on ARM" >> .env
+        echo "KUZU_MAX_DB_SIZE_GB=4" >> .env
     fi
 
     chmod 600 .env

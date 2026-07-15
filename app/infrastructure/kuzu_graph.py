@@ -11,6 +11,7 @@ import kuzu  # type: ignore
 import logging
 import uuid
 import traceback
+from app.utils.safe_kuzu_manager import _open_kuzu_db
 from typing import Optional, Dict, Any, List, Union
 from datetime import datetime, date, timezone
 from pathlib import Path
@@ -63,7 +64,7 @@ class KuzuGraphDB:
                             print(f"... and {len(files) - 10} more files")
                 
                 Path(self.database_path).parent.mkdir(parents=True, exist_ok=True)
-                self._database = kuzu.Database(self.database_path)
+                self._database = _open_kuzu_db(self.database_path)
                 self._connection = kuzu.Connection(self._database)
                 logger.info("Database connection established, initializing schema...")
                 self._initialize_schema()
@@ -124,7 +125,7 @@ class KuzuGraphDB:
 
                         # Create parent and reinitialize
                         Path(self.database_path).parent.mkdir(parents=True, exist_ok=True)
-                        self._database = kuzu.Database(self.database_path)
+                        self._database = _open_kuzu_db(self.database_path)
                         self._connection = kuzu.Connection(self._database)
                         logger.info("Database connection established, initializing schema...")
                         self._initialize_schema()

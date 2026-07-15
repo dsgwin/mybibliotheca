@@ -18,6 +18,23 @@ import re
 import atexit
 from pathlib import Path
 from typing import Optional, Dict, Any, List, Generator, Iterable
+
+
+def _open_kuzu_db(path: str) -> "kuzu.Database":
+    """Open a KuzuDB database with safe defaults for all platforms.
+
+    On Raspberry Pi / ARM the default max_db_size of 8 TiB causes an
+    immediate mmap failure because the kernel can't reserve that much
+    virtual address space.  KUZU_MAX_DB_SIZE_GB caps this (default 4 GB,
+    which is ample for a personal library).  Set to 0 to let KuzuDB use
+    its own default (only safe on x86-64 with a permissive kernel).
+    """
+    max_db_gb = int(os.getenv('KUZU_MAX_DB_SIZE_GB', '4') or 4)
+    max_db_bytes = max_db_gb * 1024 * 1024 * 1024 if max_db_gb > 0 else 0
+    kwargs: Dict[str, Any] = {}
+    if max_db_bytes:
+        kwargs['max_db_size'] = max_db_bytes
+    return kuzu.Database(path, **kwargs)
 from contextlib import contextmanager
 from datetime import datetime, timedelta, timezone, date as dt_date
 
@@ -351,13 +368,7 @@ class SafeKuzuManager:
             # Create database instance with corruption/IO recovery guard
             startup_marker_info = self._consume_shutdown_marker()
             try:
-                # Allow operators to cap the buffer pool (required on ARM/Raspberry Pi where
-                # KuzuDB's default sparse mmap reservation of ~8 TiB fails).
-                # Set KUZU_BUFFER_POOL_SIZE_MB in .env; 0 means "let KuzuDB decide" (x86 default).
-                _pool_mb = int(os.getenv('KUZU_BUFFER_POOL_SIZE_MB', '0') or 0)
-                _pool_bytes = _pool_mb * 1024 * 1024 if _pool_mb > 0 else 0
-                self._database = kuzu.Database(self.database_path,
-                                               buffer_pool_size=_pool_bytes)
+                self._database = _open_kuzu_db(self.database_path)
             except Exception as open_err:
                 err_str = str(open_err)
                 # Detect classic corruption / truncated WAL style errors
@@ -408,10 +419,7 @@ class SafeKuzuManager:
                                     db_path.unlink(missing_ok=True)  # type: ignore[arg-type]
                                 logger.warning("[KUZU] 🧹 Cleared suspected corrupt DB (CLEAR_REBUILD)")
                         # Recreate fresh DB
-                        _pool_mb = int(os.getenv('KUZU_BUFFER_POOL_SIZE_MB', '0') or 0)
-                        _pool_bytes = _pool_mb * 1024 * 1024 if _pool_mb > 0 else 0
-                        self._database = kuzu.Database(self.database_path,
-                                                       buffer_pool_size=_pool_bytes)
+                        self._database = _open_kuzu_db(self.database_path)
                         logger.warning(f"[KUZU] ✅ Recreated database (mode={recovery_mode})")
                     except Exception as rec_err:
                         logger.error(f"[KUZU] ❌ Recovery mode {recovery_mode} failed: {rec_err}")

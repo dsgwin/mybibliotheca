@@ -27,8 +27,8 @@ services:
 
       AUTO_MIGRATE: "false"
 
-      # Cap KuzuDB buffer pool to prevent mmap failure on ARM.
-      # Raise to 512 if you have a Pi with 8 GB RAM.
-      KUZU_BUFFER_POOL_SIZE_MB: ${KUZU_BUFFER_POOL_SIZE_MB:-256}
+      # Cap KuzuDB max_db_size to prevent mmap failure on ARM.
+      # Raise to 8 or 16 if you have a Pi with 8 GB RAM and a large library.
+      KUZU_MAX_DB_SIZE_GB: ${KUZU_MAX_DB_SIZE_GB:-4}
 
     restart: unless-stopped
