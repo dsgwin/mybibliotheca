@@ -1,0 +1,34 @@
+# Raspberry Pi / ARM compose file for MyBibliotheca
+# Usage:  docker compose -f docker-compose.pi.yml up -d
+#
+# Or via setup.sh which detects ARM and uses this file automatically.
+
+services:
+  bibliotheca:
+    build:
+      context: .
+      dockerfile: Dockerfile.pi
+    ports:
+      - "5054:5054"
+    volumes:
+      - ./data:/app/data
+    environment:
+      SECRET_KEY: ${SECRET_KEY}
+      SECURITY_PASSWORD_SALT: ${SECURITY_PASSWORD_SALT}
+
+      KUZU_DB_PATH: /app/data/kuzu
+      GRAPH_DATABASE_ENABLED: "true"
+
+      SITE_NAME: ${SITE_NAME:-MyBibliotheca}
+      TIMEZONE: ${TIMEZONE:-UTC}
+      WORKERS: "1"
+      LOG_LEVEL: ${LOG_LEVEL:-ERROR}
+      MYBIBLIOTHECA_VERBOSE_INIT: ${MYBIBLIOTHECA_VERBOSE_INIT:-false}
+
+      AUTO_MIGRATE: "false"
+
+      # Cap KuzuDB buffer pool to prevent mmap failure on ARM.
+      # Raise to 512 if you have a Pi with 8 GB RAM.
+      KUZU_BUFFER_POOL_SIZE_MB: ${KUZU_BUFFER_POOL_SIZE_MB:-256}
+
+    restart: unless-stopped

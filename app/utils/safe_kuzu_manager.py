@@ -351,7 +351,13 @@ class SafeKuzuManager:
             # Create database instance with corruption/IO recovery guard
             startup_marker_info = self._consume_shutdown_marker()
             try:
-                self._database = kuzu.Database(self.database_path)
+                # Allow operators to cap the buffer pool (required on ARM/Raspberry Pi where
+                # KuzuDB's default sparse mmap reservation of ~8 TiB fails).
+                # Set KUZU_BUFFER_POOL_SIZE_MB in .env; 0 means "let KuzuDB decide" (x86 default).
+                _pool_mb = int(os.getenv('KUZU_BUFFER_POOL_SIZE_MB', '0') or 0)
+                _pool_bytes = _pool_mb * 1024 * 1024 if _pool_mb > 0 else 0
+                self._database = kuzu.Database(self.database_path,
+                                               buffer_pool_size=_pool_bytes)
             except Exception as open_err:
                 err_str = str(open_err)
                 # Detect classic corruption / truncated WAL style errors
@@ -402,7 +408,10 @@ class SafeKuzuManager:
                                     db_path.unlink(missing_ok=True)  # type: ignore[arg-type]
                                 logger.warning("[KUZU] 🧹 Cleared suspected corrupt DB (CLEAR_REBUILD)")
                         # Recreate fresh DB
-                        self._database = kuzu.Database(self.database_path)
+                        _pool_mb = int(os.getenv('KUZU_BUFFER_POOL_SIZE_MB', '0') or 0)
+                        _pool_bytes = _pool_mb * 1024 * 1024 if _pool_mb > 0 else 0
+                        self._database = kuzu.Database(self.database_path,
+                                                       buffer_pool_size=_pool_bytes)
                         logger.warning(f"[KUZU] ✅ Recreated database (mode={recovery_mode})")
                     except Exception as rec_err:
                         logger.error(f"[KUZU] ❌ Recovery mode {recovery_mode} failed: {rec_err}")

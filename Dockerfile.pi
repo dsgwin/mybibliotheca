@@ -1,0 +1,105 @@
+# Raspberry Pi / ARM optimised image for MyBibliotheca
+#
+# Key differences from the standard Dockerfile:
+#   - Python 3.12 (pre-built numpy/Pillow/kuzu wheels available for ARM)
+#   - piwheels.org as an extra index for ARM binary wheels
+#   - --prefer-binary on every pip call to avoid source compilation
+#   - opencv-python-headless instead of opencv-python (no GUI / X11 deps)
+#   - Removes heavy display libraries (libGL, libGTK, libSM, libXext) not
+#     needed on a headless server
+#   - KUZU_BUFFER_POOL_SIZE_MB defaulted to 256 to avoid the 8 TiB mmap
+#     reservation that crashes on 32-bit ARM kernels
+
+FROM python:3.12-slim
+
+ENV PYTHONDONTWRITEBYTECODE=1
+ENV PYTHONUNBUFFERED=1
+ENV OPENSSL_CONF=/etc/ssl/openssl.cnf
+ENV OPENSSL_ENABLE_SHA1_SIGNATURES=1
+
+# Piwheels index for pre-built ARM wheels (armv7l + aarch64)
+ENV PIP_EXTRA_INDEX_URL=https://www.piwheels.org/simple/
+
+WORKDIR /app
+
+# ── System dependencies ───────────────────────────────────────────────────
+# Headless build: no X11/GTK/GL stack needed (opencv-headless has its own libs).
+RUN set -eux; \
+    apt-get update; \
+    DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends \
+        gcc \
+        g++ \
+        python3-dev \
+        openssl \
+        ca-certificates \
+        libssl-dev \
+        libffi-dev \
+        build-essential \
+        pkg-config \
+        tesseract-ocr \
+        tesseract-ocr-eng \
+        libtesseract-dev \
+        libzbar0 \
+        libzbar-dev \
+        libgomp1 \
+    ; \
+    rm -rf /var/lib/apt/lists/* /tmp/* /var/tmp/*
+
+# ── OpenSSL legacy provider (same as standard image) ─────────────────────
+RUN echo "openssl_conf = openssl_init" >> /etc/ssl/openssl.cnf && \
+    echo "" >> /etc/ssl/openssl.cnf && \
+    echo "[openssl_init]" >> /etc/ssl/openssl.cnf && \
+    echo "providers = provider_sect" >> /etc/ssl/openssl.cnf && \
+    echo "" >> /etc/ssl/openssl.cnf && \
+    echo "[provider_sect]" >> /etc/ssl/openssl.cnf && \
+    echo "default = default_sect" >> /etc/ssl/openssl.cnf && \
+    echo "legacy = legacy_sect" >> /etc/ssl/openssl.cnf && \
+    echo "" >> /etc/ssl/openssl.cnf && \
+    echo "[default_sect]" >> /etc/ssl/openssl.cnf && \
+    echo "activate = 1" >> /etc/ssl/openssl.cnf && \
+    echo "" >> /etc/ssl/openssl.cnf && \
+    echo "[legacy_sect]" >> /etc/ssl/openssl.cnf && \
+    echo "activate = 1" >> /etc/ssl/openssl.cnf
+
+# ── Python dependencies ───────────────────────────────────────────────────
+COPY requirements.txt .
+
+RUN pip install --upgrade --prefer-binary pip setuptools wheel
+RUN pip install --prefer-binary cryptography
+
+# Install all requirements using binary wheels where available.
+# Replace opencv-python (needs X11/GL) with opencv-python-headless.
+RUN pip install --prefer-binary \
+        $(grep -v "^opencv-python" requirements.txt | grep -v "^#" | grep -v "^$") && \
+    OPENCV_VER=$(grep "^opencv-python==" requirements.txt | sed 's/opencv-python/opencv-python-headless/') && \
+    pip install --prefer-binary "${OPENCV_VER:-opencv-python-headless}"
+
+# ── Application code ──────────────────────────────────────────────────────
+COPY . .
+
+RUN mkdir -p /app/data /app/data/kuzu /app/data/covers /app/data/uploads /app/static/covers && \
+    chmod 755 /app/data /app/data/kuzu /app/data/covers /app/data/uploads /app/static/covers
+
+ENV WTF_CSRF_ENABLED=True
+ENV KUZU_DB_PATH=/app/data/kuzu
+ENV GRAPH_DATABASE_ENABLED=true
+
+# Cap KuzuDB buffer pool to avoid 8 TiB mmap failure on ARM kernels.
+# Increase if your Pi has more than 4 GB RAM and you want better DB performance.
+ENV KUZU_BUFFER_POOL_SIZE_MB=256
+
+RUN mkdir -p /app/data/kuzu
+VOLUME ["/app/data"]
+
+ENV FLASK_DEBUG=false
+
+COPY docker-entrypoint.sh /usr/local/bin/
+RUN chmod +x /usr/local/bin/docker-entrypoint.sh
+
+EXPOSE 5054
+
+ENTRYPOINT ["docker-entrypoint.sh"]
+
+ENV WORKERS=1
+ARG ACCESS_LOGS="false"
+CMD ["/bin/sh", "-c", "if [ \"$ACCESS_LOGS\" = \"true\" ]; then exec gunicorn --worker-class sync --no-sendfile -w 1 --threads 1 -b 0.0.0.0:5054 --timeout 300 --graceful-timeout 300 --error-logfile - --access-logfile - --max-requests 1000 --max-requests-jitter 100 run:app; else exec gunicorn --worker-class sync --no-sendfile -w 1 --threads 1 -b 0.0.0.0:5054 --timeout 300 --graceful-timeout 300 --error-logfile - --max-requests 1000 --max-requests-jitter 100 run:app; fi"]
