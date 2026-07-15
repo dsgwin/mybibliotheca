@@ -814,6 +814,7 @@ class KuzuRelationshipService:
             'on_hold': 0,
             'plan_to_read': 0,
             'wishlist': 0,
+            'loaned': 0,
         }
         try:
             books = self.get_all_books_with_user_overlay_sync(user_id)
@@ -847,6 +848,8 @@ class KuzuRelationshipService:
 
                 if owner == 'wishlist':
                     counts['wishlist'] += 1
+                elif owner == 'loaned':
+                    counts['loaned'] += 1
             # No fallback: empty/default statuses are not counted under plan_to_read
         except Exception as e:
             logger.error(f"[RELATIONSHIP_SERVICE] get_library_status_counts_sync error: {e}")

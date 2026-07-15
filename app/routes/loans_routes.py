@@ -34,9 +34,10 @@ def _result_rows(result):
 
 def _get_loaned_books(user_id: str) -> list:
     """Return all books currently loaned out by this user, newest first."""
+    # Note: Book nodes have no 'uid' column — id IS the URL key.
     query = """
     MATCH (u:User {id: $user_id})-[pm:HAS_PERSONAL_METADATA]->(b:Book)
-    RETURN b.id, b.uid, b.title, b.cover_url,
+    RETURN b.id, b.title, b.cover_url,
            pm.personal_custom_fields
     """
     try:
@@ -49,18 +50,14 @@ def _get_loaned_books(user_id: str) -> list:
     for row in rows:
         if isinstance(row, dict):
             book_id   = row.get('col_0') or row.get('b.id')
-            book_uid  = row.get('col_1') or row.get('b.uid')
-            title     = row.get('col_2') or row.get('b.title')
-            cover_url = row.get('col_3') or row.get('b.cover_url')
-            raw_blob  = row.get('col_4') or row.get('pm.personal_custom_fields')
+            title     = row.get('col_1') or row.get('b.title')
+            cover_url = row.get('col_2') or row.get('b.cover_url')
+            raw_blob  = row.get('col_3') or row.get('pm.personal_custom_fields')
         else:
-            book_id, book_uid, title, cover_url, raw_blob = (
-                row[0] if len(row) > 0 else None,
-                row[1] if len(row) > 1 else None,
-                row[2] if len(row) > 2 else None,
-                row[3] if len(row) > 3 else None,
-                row[4] if len(row) > 4 else None,
-            )
+            book_id   = row[0] if len(row) > 0 else None
+            title     = row[1] if len(row) > 1 else None
+            cover_url = row[2] if len(row) > 2 else None
+            raw_blob  = row[3] if len(row) > 3 else None
 
         try:
             blob = json.loads(raw_blob) if raw_blob else {}
@@ -71,13 +68,13 @@ def _get_loaned_books(user_id: str) -> list:
             continue
 
         books.append({
-            'id':            book_id,
-            'uid':           book_uid,
-            'title':         title or 'Unknown Title',
-            'cover_url':     cover_url,
-            'loaned_to':     blob.get('loaned_to', ''),
+            'id':              book_id,
+            'uid':             book_id,   # id IS the URL key — no separate uid column
+            'title':           title or 'Unknown Title',
+            'cover_url':       cover_url,
+            'loaned_to':       blob.get('loaned_to', ''),
             'loaned_to_phone': blob.get('loaned_to_phone', ''),
-            'loaned_date':   blob.get('loaned_date', ''),
+            'loaned_date':     blob.get('loaned_date', ''),
         })
 
     # Sort newest loan first
