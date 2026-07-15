@@ -449,10 +449,10 @@ class KuzuServiceFacade:
         """Get children of a category."""
         return self.category_service.get_category_children_sync(category_id)
     
-    def get_books_by_category_sync(self, category_id: str, user_id: Optional[str] = None, 
+    def get_books_by_category_sync(self, category_id: str, user_id: Optional[str] = None,
                                    include_subcategories: bool = False) -> List[Dict[str, Any]]:
-        """Get books in a category."""
-        return self.category_service.get_books_by_category_sync(category_id, include_subcategories)
+        """Get books in a category, filtered to the given user's library."""
+        return self.category_service.get_books_by_category_sync(category_id, include_subcategories, user_id=user_id)
 
     def get_book_categories_sync(self, book_id: str) -> List[Dict[str, Any]]:
         """Get categories for a book."""

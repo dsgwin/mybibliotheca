@@ -407,7 +407,7 @@
                         {'filter': 'reading', 'outline': 'warning', 'text': 'warning', 'label': 'Currently Reading', 'value': stats.currently_reading},
                         {'filter': 'read', 'outline': 'success', 'text': 'success', 'label': 'Books Read', 'value': stats.books_read},
                         {'filter': 'plan_to_read', 'outline': 'info', 'text': 'info', 'label': 'Plan to Read', 'value': stats.want_to_read},
-                        {'filter': 'wishlist', 'outline': 'primary', 'text': 'primary', 'label': 'Wishlist', 'value': stats.wishlist},
+                        {'filter': 'loaned', 'outline': 'warning', 'text': 'warning', 'label': 'Loaned Out', 'value': stats.loaned if stats.loaned is defined else 0},
                         {'filter': 'on_hold', 'outline': 'secondary', 'text': 'secondary', 'label': 'On Hold', 'value': stats.on_hold},
                         {'filter': 'all', 'outline': 'dark', 'text': 'dark', 'label': 'Total Books', 'value': stats.total_books}
                     ] %}
@@ -1321,6 +1321,9 @@ function applyStatusFilter(filter) {
             case 'wishlist':
                 shouldShow = ownershipStatus === 'wishlist';
                 break;
+            case 'loaned':
+                shouldShow = ownershipStatus === 'loaned';
+                break;
         }
 
         if (shouldShow) {
@@ -1356,6 +1359,9 @@ function applyStatusFilter(filter) {
             case 'wishlist':
                 message = "You have no books on your wishlist.";
                 break;
+            case 'loaned':
+                message = "You have no books currently loaned out.";
+                break;
             case 'all':
                 message = "Your library is empty.";
                 break;
@@ -1384,6 +1390,7 @@ function updateActiveFilter(filter) {
             else if (filter === 'plan_to_read') btn.classList.add('btn-info');
             else if (filter === 'wishlist') btn.classList.add('btn-primary');
             else if (filter === 'on_hold') btn.classList.add('btn-secondary');
+            else if (filter === 'loaned') btn.classList.add('btn-warning');
             else btn.classList.add('btn-dark');
         } else {
             btn.classList.remove('btn-warning', 'btn-success', 'btn-info', 'btn-primary', 'btn-secondary', 'btn-dark');
@@ -1392,6 +1399,7 @@ function updateActiveFilter(filter) {
             else if (btn.dataset.filter === 'plan_to_read') btn.classList.add('btn-outline-info');
             else if (btn.dataset.filter === 'wishlist') btn.classList.add('btn-outline-primary');
             else if (btn.dataset.filter === 'on_hold') btn.classList.add('btn-outline-secondary');
+            else if (btn.dataset.filter === 'loaned') btn.classList.add('btn-outline-warning');
             else btn.classList.add('btn-outline-dark');
         }
     });

@@ -280,42 +280,59 @@ class KuzuCategoryService:
             traceback.print_exc()
             return []
     
-    async def get_books_by_category(self, category_id: str, include_subcategories: bool = False) -> List[Dict[str, Any]]:
-        """Get books in a category."""
+    async def get_books_by_category(self, category_id: str, include_subcategories: bool = False,
+                                     user_id: Optional[str] = None) -> List[Dict[str, Any]]:
+        """Get books in a category, optionally filtered to a specific user's library."""
         try:
+            effective_user_id = user_id or self.user_id
             if include_subcategories:
                 # Get all descendant categories
                 descendant_ids = await self._get_all_descendant_categories(category_id)
                 descendant_ids.append(category_id)  # Include the category itself
-                
-                # Build query for multiple categories
-                query = """
-                MATCH (b:Book)-[:CATEGORIZED_AS]->(c:Category)
-                WHERE c.id IN $category_ids
-                RETURN DISTINCT b
-                ORDER BY b.title ASC
-                """
-                
-                # Use safe query execution and convert result
+
+                if effective_user_id:
+                    query = """
+                    MATCH (b:Book)-[:CATEGORIZED_AS]->(c:Category)
+                    WHERE c.id IN $category_ids
+                    MATCH (u:User {id: $user_id})-[:HAS_PERSONAL_METADATA]->(b)
+                    RETURN DISTINCT b
+                    ORDER BY b.title ASC
+                    """
+                    params = {"category_ids": descendant_ids, "user_id": effective_user_id}
+                else:
+                    query = """
+                    MATCH (b:Book)-[:CATEGORIZED_AS]->(c:Category)
+                    WHERE c.id IN $category_ids
+                    RETURN DISTINCT b
+                    ORDER BY b.title ASC
+                    """
+                    params = {"category_ids": descendant_ids}
+
                 raw_result = safe_execute_kuzu_query(
-                    query=query,
-                    params={"category_ids": descendant_ids},
-                    user_id=self.user_id,
+                    query=query, params=params,
+                    user_id=effective_user_id,
                     operation="get_books_by_category_with_subcategories"
                 )
             else:
-                # Query for books in this specific category
-                query = """
-                MATCH (b:Book)-[:CATEGORIZED_AS]->(c:Category {id: $category_id})
-                RETURN b
-                ORDER BY b.title ASC
-                """
-                
-                # Use safe query execution and convert result
+                if effective_user_id:
+                    query = """
+                    MATCH (b:Book)-[:CATEGORIZED_AS]->(c:Category {id: $category_id})
+                    MATCH (u:User {id: $user_id})-[:HAS_PERSONAL_METADATA]->(b)
+                    RETURN b
+                    ORDER BY b.title ASC
+                    """
+                    params = {"category_id": category_id, "user_id": effective_user_id}
+                else:
+                    query = """
+                    MATCH (b:Book)-[:CATEGORIZED_AS]->(c:Category {id: $category_id})
+                    RETURN b
+                    ORDER BY b.title ASC
+                    """
+                    params = {"category_id": category_id}
+
                 raw_result = safe_execute_kuzu_query(
-                    query=query,
-                    params={"category_id": category_id},
-                    user_id=self.user_id,
+                    query=query, params=params,
+                    user_id=effective_user_id,
                     operation="get_books_by_category_single"
                 )
             
@@ -615,9 +632,10 @@ class KuzuCategoryService:
         """Get children of a category (sync version)."""
         return run_async(self.get_child_categories(category_id))
     
-    def get_books_by_category_sync(self, category_id: str, include_subcategories: bool = False) -> List[Dict[str, Any]]:
-        """Get books in a category (sync version)."""
-        return run_async(self.get_books_by_category(category_id, include_subcategories))
+    def get_books_by_category_sync(self, category_id: str, include_subcategories: bool = False,
+                                    user_id: Optional[str] = None) -> List[Dict[str, Any]]:
+        """Get books in a category (sync version), filtered to the given user's library."""
+        return run_async(self.get_books_by_category(category_id, include_subcategories, user_id=user_id))
     
     def create_category_sync(self, category_data: Dict[str, Any]) -> Optional[Category]:
         """Create a new category (sync version)."""

@@ -491,7 +491,7 @@ def edit_reading_log(log_id):
             pages_read=pages_read,
             minutes_read=minutes_read,
             notes=notes or None,
-            created_at=datetime.fromisoformat(existing_log['created_at']) if existing_log.get('created_at') else datetime.now(timezone.utc),
+            created_at=existing_log['created_at'] if isinstance(existing_log.get('created_at'), datetime) else (datetime.fromisoformat(existing_log['created_at']) if existing_log.get('created_at') else datetime.now(timezone.utc)),
             updated_at=datetime.now(timezone.utc)
         )
         

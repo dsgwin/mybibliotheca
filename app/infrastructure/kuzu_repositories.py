@@ -1039,49 +1039,36 @@ class KuzuBookRepository:
             return None
     
     async def _create_category_relationships_from_raw(self, book_id: str, raw_categories: Any):
-        """Create category relationships from raw category data (strings or list)."""
+        """Create category relationships from raw category data (strings or list).
+
+        Applies genre normalisation and filtering before persisting so that only
+        canonical English genres are stored, with a cap of 5 per book.
+        """
         try:
-            # Handle different raw_categories formats
+            from app.utils.genre_filter import filter_genres, normalize_hierarchical_genre, normalize_genre
+            import re as _re
+
+            # Coerce input to a list of strings
             if isinstance(raw_categories, str):
-                # Split comma-separated string
-                category_names = [cat.strip() for cat in raw_categories.split(',') if cat.strip()]
+                raw_list = [cat.strip() for cat in raw_categories.split(',') if cat.strip()]
             elif isinstance(raw_categories, list):
-                category_names = [str(cat).strip() for cat in raw_categories if str(cat).strip()]
+                raw_list = [str(cat).strip() for cat in raw_categories if str(cat).strip()]
             else:
                 logger.warning(f"⚠️ Unknown raw_categories format: {type(raw_categories)}")
                 return
-            
-            logger.info(f"🔗 Processing {len(category_names)} categories from raw data: {category_names}")
-            
-            for category_name in category_names:
-                # Detect hierarchical category paths like "Fiction / Science Fiction / Space Opera"
-                if ('/' in category_name) or ('>' in category_name):
-                    try:
-                        # Split on common separators and normalize whitespace
-                        import re
-                        parts = [p.strip() for p in re.split(r"[>/]", category_name) if p.strip()]
-                        if not parts:
-                            continue
-                        leaf_category_id = await self._ensure_category_path_exists(parts)
-                        if leaf_category_id:
-                            # Link the book to the most specific (leaf) category
-                            success = self.db.create_relationship(
-                                'Book', book_id, 'CATEGORIZED_AS', 'Category', leaf_category_id, {}
-                            )
-                            if success:
-                                logger.info(f"✅ Linked book {book_id} to leaf category path '{category_name}' (leaf id: {leaf_category_id})")
-                            else:
-                                logger.error(f"❌ Failed to link book {book_id} to leaf category id {leaf_category_id}")
-                        else:
-                            logger.warning(f"⚠️ Could not resolve category path for: {category_name}")
-                    except Exception as e:
-                        logger.error(f"❌ Failed processing hierarchical category '{category_name}': {e}")
-                        # Fallback to flat handling
-                        await self._create_category_relationship_by_name(book_id, category_name)
-                else:
-                    # Flat category name
-                    await self._create_category_relationship_by_name(book_id, category_name)
-                
+
+            # Normalize and filter to canonical genres (max 5 per book)
+            canonical_names = filter_genres(raw_list, max_count=5)
+
+            if not canonical_names:
+                logger.info(f"🔗 No canonical genres matched for book {book_id} from {raw_list}")
+                return
+
+            logger.info(f"🔗 Storing {len(canonical_names)} canonical genres for book {book_id}: {canonical_names}")
+
+            for category_name in canonical_names:
+                await self._create_category_relationship_by_name(book_id, category_name)
+
         except Exception as e:
             logger.error(f"❌ Failed to create category relationships from raw data: {e}")
 

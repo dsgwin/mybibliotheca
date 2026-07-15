@@ -2653,6 +2653,9 @@ def batch_fetch_book_metadata(isbns):
         if not raw:
             return False
         cleaned = _re.sub(r'[^0-9Xx]', '', raw.strip())
+        # Restore leading zero stripped by spreadsheet apps
+        if len(cleaned) == 9 and cleaned.isdigit():
+            cleaned = '0' + cleaned
         return _valid_isbn10(cleaned) or _valid_isbn13(cleaned)
 
     valid_entries = []

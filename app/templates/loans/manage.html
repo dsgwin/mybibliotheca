@@ -1,0 +1,300 @@
+{% extends "base.html" %}
+{% block title %}Loans – {{ site_name }}{% endblock %}
+
+{% block content %}
+<div class="container py-4">
+
+  {# ── Page header ── #}
+  <div class="d-flex align-items-center justify-content-between mb-4">
+    <h1 class="h3 mb-0"><i class="bi bi-send me-2"></i>Loans</h1>
+    <span class="badge bg-secondary fs-6">{{ loaned_books | length }} out</span>
+  </div>
+
+  {# ── Flash messages ── #}
+  {% with messages = get_flashed_messages(with_categories=true) %}
+    {% for category, message in messages %}
+      <div class="alert alert-{{ 'danger' if category == 'error' else category }} alert-dismissible fade show" role="alert">
+        {{ message }}
+        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+      </div>
+    {% endfor %}
+  {% endwith %}
+
+  <div class="row g-4">
+
+    {# ══════════════════════════════════════════════════════
+       Left column – Loan a book
+       ══════════════════════════════════════════════════════ #}
+    <div class="col-lg-4">
+      <div class="card h-100">
+        <div class="card-header fw-semibold">
+          <i class="bi bi-book-half me-1"></i> Loan a Book
+        </div>
+        <div class="card-body">
+
+          {# Book search #}
+          <div class="mb-3">
+            <label class="form-label fw-medium">Search your library</label>
+            <div class="position-relative">
+              <input type="text" id="loan-search" class="form-control"
+                     placeholder="Title, author or ISBN…" autocomplete="off">
+              <div id="loan-search-spinner"
+                   class="position-absolute top-50 end-0 translate-middle-y me-2 d-none">
+                <div class="spinner-border spinner-border-sm text-secondary" role="status"></div>
+              </div>
+            </div>
+            <div id="loan-search-results" class="list-group mt-1 shadow-sm" style="max-height:260px;overflow-y:auto;display:none;"></div>
+          </div>
+
+          {# Selected book display #}
+          <div id="selected-book-display" class="d-none mb-3 p-2 border rounded bg-light">
+            <div class="d-flex align-items-center gap-2">
+              <img id="selected-cover" src="" alt="" width="36" height="54"
+                   class="rounded object-fit-cover" style="object-fit:cover;"
+                   onerror="this.style.display='none'">
+              <div class="flex-grow-1 overflow-hidden">
+                <div id="selected-title" class="fw-semibold text-truncate"></div>
+                <div id="selected-authors" class="text-muted small text-truncate"></div>
+              </div>
+              <button type="button" class="btn btn-sm btn-outline-secondary flex-shrink-0"
+                      id="clear-selection" title="Clear">
+                <i class="bi bi-x"></i>
+              </button>
+            </div>
+          </div>
+
+          {# Loan form #}
+          <form method="POST" action="{{ url_for('loans.loan_book') }}" id="loan-form">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+            <input type="hidden" name="book_id" id="loan-book-id">
+
+            <div class="mb-3">
+              <label for="loaned_to" class="form-label fw-medium">
+                Borrower name <span class="text-danger">*</span>
+              </label>
+              <input type="text" class="form-control" id="loaned_to" name="loaned_to"
+                     placeholder="Full name" required>
+            </div>
+
+            <div class="mb-4">
+              <label for="loaned_to_phone" class="form-label fw-medium">
+                Phone number <span class="text-muted fw-normal">(optional)</span>
+              </label>
+              <input type="tel" class="form-control" id="loaned_to_phone" name="loaned_to_phone"
+                     placeholder="e.g. 555-1234">
+            </div>
+
+            <button type="submit" class="btn btn-primary w-100" id="loan-submit-btn" disabled>
+              <i class="bi bi-send me-1"></i> Record Loan
+            </button>
+          </form>
+
+        </div>
+      </div>
+    </div>
+
+    {# ══════════════════════════════════════════════════════
+       Right column – Currently loaned books
+       ══════════════════════════════════════════════════════ #}
+    <div class="col-lg-8">
+      <div class="card">
+        <div class="card-header fw-semibold">
+          <i class="bi bi-people me-1"></i> Currently Out
+        </div>
+
+        {% if loaned_books %}
+        <div class="table-responsive">
+          <table class="table table-hover mb-0 align-middle">
+            <thead class="table-light">
+              <tr>
+                <th style="width:42px"></th>
+                <th>Book</th>
+                <th>Loaned to</th>
+                <th>Date</th>
+                <th></th>
+              </tr>
+            </thead>
+            <tbody>
+              {% for book in loaned_books %}
+              <tr>
+                <td class="ps-3">
+                  {% if book.cover_url %}
+                    <img src="{{ book.cover_url }}" alt=""
+                         width="32" height="48" class="rounded"
+                         style="object-fit:cover;"
+                         onerror="this.style.display='none'">
+                  {% else %}
+                    <div class="bg-light rounded d-flex align-items-center justify-content-center"
+                         style="width:32px;height:48px;">
+                      <i class="bi bi-book text-muted"></i>
+                    </div>
+                  {% endif %}
+                </td>
+
+                <td>
+                  <div class="fw-medium">
+                    {% if book.uid %}
+                      <a href="{{ url_for('book.view_book_enhanced', uid=book.uid) }}"
+                         class="text-decoration-none">{{ book.title }}</a>
+                    {% else %}
+                      {{ book.title }}
+                    {% endif %}
+                  </div>
+                </td>
+
+                <td>
+                  <div class="fw-medium">{{ book.loaned_to }}</div>
+                  {% if book.loaned_to_phone %}
+                    <div class="text-muted small">
+                      <i class="bi bi-telephone me-1"></i>{{ book.loaned_to_phone }}
+                    </div>
+                  {% endif %}
+                </td>
+
+                <td class="text-nowrap text-muted small">
+                  {% if book.loaned_date %}
+                    {{ book.loaned_date }}
+                  {% else %}
+                    —
+                  {% endif %}
+                </td>
+
+                <td class="text-end pe-3">
+                  <form method="POST"
+                        action="{{ url_for('loans.return_book', book_id=book.id) }}"
+                        onsubmit="return confirm('Mark "{{ book.title }}" as returned?')">
+                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                    <button type="submit" class="btn btn-sm btn-outline-success">
+                      <i class="bi bi-check2 me-1"></i>Returned
+                    </button>
+                  </form>
+                </td>
+              </tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
+
+        {% else %}
+        <div class="card-body text-center py-5 text-muted">
+          <i class="bi bi-inbox display-4 d-block mb-3"></i>
+          <p class="mb-0">No books are currently loaned out.</p>
+        </div>
+        {% endif %}
+
+      </div>
+    </div>
+
+  </div>{# /row #}
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+(function () {
+  const searchInput   = document.getElementById('loan-search');
+  const spinner       = document.getElementById('loan-search-spinner');
+  const resultsList   = document.getElementById('loan-search-results');
+  const display       = document.getElementById('selected-book-display');
+  const selectedCover = document.getElementById('selected-cover');
+  const selectedTitle = document.getElementById('selected-title');
+  const selectedAuthors = document.getElementById('selected-authors');
+  const clearBtn      = document.getElementById('clear-selection');
+  const bookIdInput   = document.getElementById('loan-book-id');
+  const submitBtn     = document.getElementById('loan-submit-btn');
+
+  let debounceTimer = null;
+
+  function clearSelection() {
+    bookIdInput.value = '';
+    submitBtn.disabled = true;
+    display.classList.add('d-none');
+    searchInput.value = '';
+    resultsList.style.display = 'none';
+    resultsList.innerHTML = '';
+  }
+
+  function selectBook(book) {
+    bookIdInput.value   = book.id;
+    selectedTitle.textContent   = book.title;
+    selectedAuthors.textContent = book.authors || '';
+    if (book.cover_url) {
+      selectedCover.src = book.cover_url;
+      selectedCover.style.display = '';
+    } else {
+      selectedCover.style.display = 'none';
+    }
+    display.classList.remove('d-none');
+    submitBtn.disabled = false;
+    resultsList.style.display = 'none';
+    resultsList.innerHTML = '';
+    searchInput.value = book.title;
+  }
+
+  function renderResults(books) {
+    resultsList.innerHTML = '';
+    if (!books.length) {
+      resultsList.innerHTML = '<div class="list-group-item text-muted small py-2">No books found.</div>';
+      resultsList.style.display = 'block';
+      return;
+    }
+    books.forEach(function (book) {
+      const item = document.createElement('button');
+      item.type = 'button';
+      item.className = 'list-group-item list-group-item-action py-2 px-3';
+      item.innerHTML = `
+        <div class="fw-medium text-truncate">${book.title}</div>
+        ${book.authors ? `<div class="text-muted small text-truncate">${book.authors}</div>` : ''}
+      `;
+      item.addEventListener('click', function () { selectBook(book); });
+      resultsList.appendChild(item);
+    });
+    resultsList.style.display = 'block';
+  }
+
+  searchInput.addEventListener('input', function () {
+    clearTimeout(debounceTimer);
+    const q = searchInput.value.trim();
+    if (!q) {
+      resultsList.style.display = 'none';
+      return;
+    }
+    debounceTimer = setTimeout(function () {
+      spinner.classList.remove('d-none');
+      fetch(`{{ url_for('loans.api_search') }}?q=${encodeURIComponent(q)}`, {
+        headers: { 'X-CSRFToken': window.csrfToken || '' }
+      })
+      .then(r => r.json())
+      .then(function (data) {
+        spinner.classList.add('d-none');
+        renderResults(data.books || []);
+      })
+      .catch(function () {
+        spinner.classList.add('d-none');
+        resultsList.innerHTML = '<div class="list-group-item text-danger small py-2">Search failed.</div>';
+        resultsList.style.display = 'block';
+      });
+    }, 280);
+  });
+
+  // Hide dropdown when clicking outside
+  document.addEventListener('click', function (e) {
+    if (!searchInput.contains(e.target) && !resultsList.contains(e.target)) {
+      resultsList.style.display = 'none';
+    }
+  });
+
+  clearBtn.addEventListener('click', clearSelection);
+
+  // Prevent form submit without a book selected
+  document.getElementById('loan-form').addEventListener('submit', function (e) {
+    if (!bookIdInput.value) {
+      e.preventDefault();
+      searchInput.focus();
+      searchInput.classList.add('is-invalid');
+      setTimeout(() => searchInput.classList.remove('is-invalid'), 2000);
+    }
+  });
+})();
+</script>
+{% endblock %}

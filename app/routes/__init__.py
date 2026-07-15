@@ -20,6 +20,7 @@ from .reading_log_routes import reading_logs
 from .genre_taxonomy_routes import genre_taxonomy_bp
 from .api_routes import api_bp
 from .series_routes import series_bp
+from .loans_routes import loans_bp
 
 # Create a main blueprint that can be registered with the app
 main_bp = Blueprint('main', __name__)
@@ -375,6 +376,7 @@ def register_blueprints(app):
     app.register_blueprint(genres_bp, url_prefix='/genres')
     app.register_blueprint(genres_bp, url_prefix='/categories', name='categories')
     app.register_blueprint(reading_logs, url_prefix='/reading-logs')
+    app.register_blueprint(loans_bp)
     # Register admin genre taxonomy routes
     app.register_blueprint(genre_taxonomy_bp, url_prefix='/admin/genre-taxonomy')
     

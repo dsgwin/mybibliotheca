@@ -767,8 +767,10 @@ class SimplifiedBookService:
                 if getattr(book_data, 'raw_categories', None):
                     await book_repo._create_category_relationships_from_raw(book_id, book_data.raw_categories)
                 elif book_data.categories:
-                    # Fallback to flat categories
-                    for category_name in book_data.categories:
+                    # Fallback to flat categories — apply the same filter used for raw_categories
+                    from app.utils.genre_filter import filter_genres
+                    filtered_cats = filter_genres(list(book_data.categories), max_count=5)
+                    for category_name in filtered_cats:
                         if not category_name.strip():
                             continue
                         category_id = await book_repo._ensure_category_exists(category_name.strip())

@@ -1238,7 +1238,7 @@ def settings_server_partial(panel: str):
                         try:
                             file_extension = file.filename.rsplit('.', 1)[1].lower()
                             unique_filename = f"bg_{uuid.uuid4().hex}.{file_extension}"
-                            data_dir = getattr(current_app.config, 'DATA_DIR', None)
+                            data_dir = current_app.config.get('DATA_DIR')
                             if data_dir:
                                 upload_dir = os.path.join(data_dir, 'uploads', 'backgrounds')
                             else:

@@ -2034,6 +2034,7 @@ def library():
         'want_to_read': int(global_counts.get('plan_to_read', 0)),
         'on_hold': int(global_counts.get('on_hold', 0)),
         'wishlist': int(global_counts.get('wishlist', 0)),
+        'loaned': int(global_counts.get('loaned', 0)),
         # Add location stats (page sample)
         'books_with_locations': books_with_locations,
         'books_without_locations': books_without_locations,
@@ -2090,6 +2091,8 @@ def library():
     if status_filter and status_filter != 'all':
         if status_filter == 'wishlist':
             filtered_books = [book for book in filtered_books if get_ownership_status(book) == 'wishlist']
+        elif status_filter == 'loaned':
+            filtered_books = [book for book in filtered_books if get_ownership_status(book) == 'loaned']
         elif status_filter == 'reading':
             # Handle both 'reading' and 'currently_reading' for backwards compatibility
             filtered_books = [book for book in filtered_books if get_reading_status(book) in ['reading', 'currently_reading']]
@@ -2569,10 +2572,10 @@ def library():
                 'locations': getattr(b, 'locations', []) if not isinstance(b, dict) else b.get('locations', []),
             }
             payload.append(bd)
-        # ETag based on user, page/filter/sort, and version
-        from app.utils.simple_cache import get_user_library_version
+        # ETag based on user, page/filter/sort, version, and deploy stamp
+        from app.utils.simple_cache import get_user_library_version, DEPLOY_STAMP
         version = get_user_library_version(str(current_user.id))
-        etag = f"W/\"lib:{current_user.id}:{page}:{rows}:{cols}:{per_page}:{status_filter}:{category_filter}:{publisher_filter}:{language_filter}:{location_filter}:{media_type_filter}:{finished_after_raw}:{finished_before_raw}:{search_query}:{sort_option}:v{version}\""
+        etag = f"W/\"lib:{current_user.id}:{page}:{rows}:{cols}:{per_page}:{status_filter}:{category_filter}:{publisher_filter}:{language_filter}:{location_filter}:{media_type_filter}:{finished_after_raw}:{finished_before_raw}:{search_query}:{sort_option}:v{version}:d{DEPLOY_STAMP}\""
         if request.headers.get('If-None-Match') == etag:
             return ('', 304)
         resp = make_response(jsonify({
@@ -2586,10 +2589,10 @@ def library():
         resp.headers['Cache-Control'] = 'private, max-age=0, must-revalidate'
         return resp
 
-    # ETag for HTML response too
-    from app.utils.simple_cache import get_user_library_version
+    # ETag for HTML response too — includes deploy stamp so restarts always bust stale browser cache
+    from app.utils.simple_cache import get_user_library_version, DEPLOY_STAMP
     _version = get_user_library_version(str(current_user.id))
-    _html_etag = f"W/\"libhtml:{current_user.id}:{page}:{rows}:{cols}:{per_page}:{status_filter}:{category_filter}:{publisher_filter}:{language_filter}:{location_filter}:{media_type_filter}:{finished_after_raw}:{finished_before_raw}:{search_query}:{sort_option}:v{_version}\""
+    _html_etag = f"W/\"libhtml:{current_user.id}:{page}:{rows}:{cols}:{per_page}:{status_filter}:{category_filter}:{publisher_filter}:{language_filter}:{location_filter}:{media_type_filter}:{finished_after_raw}:{finished_before_raw}:{search_query}:{sort_option}:v{_version}:d{DEPLOY_STAMP}\""
     if request.headers.get('If-None-Match') == _html_etag:
         return ('', 304)
 
@@ -3855,13 +3858,9 @@ def upload_cover(uid):
         # Store old cover URL for cleanup
         old_cover_url = user_book.cover_url
         
-        # Process the uploaded image via unified helper
+        # Process the uploaded image via unified helper; keep relative /covers/... path
         new_cover_url = process_image_from_filestorage(file)
-        abs_cover_url = new_cover_url
-        if new_cover_url.startswith('/'):
-            abs_cover_url = request.host_url.rstrip('/') + new_cover_url
-        # Update the book with the new cover URL
-        book_service.update_book_sync(user_book.uid, str(current_user.id), cover_url=abs_cover_url)
+        book_service.update_book_sync(user_book.uid, str(current_user.id), cover_url=new_cover_url)
         
         # Clean up old cover file if it exists and is a local file
         if old_cover_url and (old_cover_url.startswith('/covers/') or old_cover_url.startswith('/static/covers/')):

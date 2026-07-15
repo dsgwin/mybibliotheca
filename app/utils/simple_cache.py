@@ -42,6 +42,10 @@ _cache = TTLCache()
 _user_versions: Dict[str, int] = {}
 _version_lock = threading.Lock()
 
+# Stamp baked at import time; changes on every process start / deployment.
+# Included in ETags so browsers always fetch fresh content after a restart.
+DEPLOY_STAMP: str = str(int(time.time()))
+
 
 def cache_get(key: str) -> Optional[Any]:
     return _cache.get(key)

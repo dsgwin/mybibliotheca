@@ -1104,8 +1104,23 @@
   }
 
   body {
+    {% if background_config.type == 'image' and background_config.image_url %}
+    background: transparent;
+    background-image: url('{{ background_config.image_url }}');
+    background-size: var(--bg-size, cover);
+    background-repeat: var(--bg-repeat, no-repeat);
+    background-position: var(--bg-position, center center);
+    background-attachment: fixed;
+    {% elif background_config.type == 'solid' %}
+    background: {{ background_config.solid_color }};
+    background-image: none;
+    {% elif background_config.type == 'gradient' %}
+    background: linear-gradient({{ background_config.gradient_direction }}, {{ background_config.gradient_start }} 0%, {{ background_config.gradient_end }} 100%);
+    background-image: none;
+    {% else %}
     background: var(--page-bg);
     background-image: var(--page-gradient);
+    {% endif %}
     font-family: var(--font-stack-sans);
     color: var(--text-color);
     min-height: 100vh;
@@ -1141,7 +1156,6 @@
 
   .overlay {
     position: relative;
-    z-index: 1;
     min-height: calc(100vh - (clamp(12px, 2vw, 32px) * 2));
     display: flex;
     flex-direction: column;
@@ -1156,7 +1170,6 @@
     border-radius: var(--radius-lg);
     padding: clamp(24px, 4vw, 48px);
     box-shadow: var(--shadow-soft);
-    backdrop-filter: var(--glass-blur);
   }
 
   h1, h2, h3, h4, h5, h6 {
@@ -1680,6 +1693,7 @@
                 <ul class="dropdown-menu" aria-labelledby="moreDropdown">
                   <li><a class="dropdown-item" href="{{ url_for('series.list_series') }}">Series</a></li>
                   <li><a class="dropdown-item" href="{{ url_for('locations.manage_locations') }}">Locations</a></li>
+                  <li><a class="dropdown-item" href="{{ url_for('loans.manage_loans') }}"><i class="bi bi-send me-1"></i>Loans</a></li>
                   <li><a class="dropdown-item" href="{{ url_for('metadata.index') }}">Metadata</a></li>
                   <li><a class="dropdown-item" href="{{ url_for('auth.settings') }}">Settings</a></li>
                 </ul>

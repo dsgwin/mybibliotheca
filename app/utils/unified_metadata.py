@@ -299,10 +299,12 @@ def _fetch_google_by_isbn(isbn: str) -> Dict[str, Any]:
 	2) Highest date specificity of volumeInfo.publishedDate
 	Fallback to the first item if list is empty.
 	"""
+	api_key = os.getenv('GOOGLE_BOOKS_API_KEY', '').strip()
 	url = f"https://www.googleapis.com/books/v1/volumes?q=isbn:{isbn}"
+	if api_key:
+		url += f"&key={api_key}"
 	try:
-		resp = requests.get(url, timeout=_REQUEST_TIMEOUT, headers={
-			'User-Agent': 'MyBibliotheca/metadata-fetch (+https://example.local)'})
+		resp = requests.get(url, timeout=_REQUEST_TIMEOUT)
 		resp.raise_for_status()
 		data = resp.json()
 		items = data.get('items') or []
@@ -384,7 +386,10 @@ def _fetch_google_by_isbn(isbn: str) -> Dict[str, Any]:
 		try:
 			vol_id = item.get('id')
 			if vol_id:
-				full_resp = requests.get(f"https://www.googleapis.com/books/v1/volumes/{vol_id}?projection=full", timeout=_REQUEST_TIMEOUT)
+				full_url = f"https://www.googleapis.com/books/v1/volumes/{vol_id}?projection=full"
+				if api_key:
+					full_url += f"&key={api_key}"
+				full_resp = requests.get(full_url, timeout=_REQUEST_TIMEOUT)
 				full_resp.raise_for_status()
 				full_data = full_resp.json() or {}
 				fvi = (full_data.get('volumeInfo') or {})
@@ -494,8 +499,7 @@ def _fetch_openlibrary_by_isbn(isbn: str) -> Dict[str, Any]:
 			target_isbn13 = _isbn10_to_13(target_norm)
 	edition_payload = _load_openlibrary_edition_payload(isbn)
 	try:
-		resp = requests.get(url, timeout=_REQUEST_TIMEOUT, headers={
-			'User-Agent': 'MyBibliotheca/metadata-fetch (+https://example.local)'})
+		resp = requests.get(url, timeout=_REQUEST_TIMEOUT)
 		resp.raise_for_status()
 		data = resp.json() or {}
 		ol = data.get(bibkey) or {}
@@ -763,6 +767,9 @@ def _unified_fetch_pair(isbn: str):
 	import re as _re_norm
 	isbn_clean = (isbn or '').strip()
 	isbn_clean = _re_norm.sub(r'[^0-9Xx]', '', isbn_clean)
+	# Restore leading zero stripped by spreadsheet apps (9-digit numbers are ISBN-10s missing '0' prefix)
+	if len(isbn_clean) == 9 and isbn_clean.isdigit():
+		isbn_clean = '0' + isbn_clean
 	# Early structural + checksum validation to avoid wasting provider calls
 	def _valid_isbn10(val: str) -> bool:
 		if len(val) != 10: return False
@@ -841,6 +848,10 @@ def fetch_unified_by_isbn_detailed(isbn: str) -> Tuple[Dict[str, Any], Dict[str,
 	Now includes ISBN mismatch detection to warn when metadata sources return
 	information for a different ISBN than requested.
 	"""
+	# Normalize before anything: strip non-ISBN chars and restore leading zero stripped by spreadsheets
+	_isbn_norm = re.sub(r'[^0-9Xx]', '', (isbn or '').strip())
+	if len(_isbn_norm) == 9 and _isbn_norm.isdigit():
+		isbn = '0' + _isbn_norm
 	google, openlib, _errors = _unified_fetch_pair(isbn)
 	req_variants = _collect_isbn_variants(isbn)
 	req_isbn = _normalize_isbn_value(isbn)

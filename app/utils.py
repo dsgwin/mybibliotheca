@@ -573,6 +573,9 @@ def normalize_goodreads_value(value, field_type='text'):
         import re as _re
         raw_before = value
         value = _re.sub(r'[^0-9Xx]', '', value)
+        # Restore leading zero stripped by spreadsheet apps (9-digit numbers are ISBN-10s missing '0' prefix)
+        if value and len(value) == 9 and value.isdigit():
+            value = '0' + value
         # Warn if after cleaning the length isn't 10 or 13 (still accept, but flag)
         if value and len(value) not in (10, 13):
             print(f"WARNING: Unexpected ISBN length after cleaning '{raw_before}' -> '{value}'")

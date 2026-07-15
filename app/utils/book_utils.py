@@ -1161,6 +1161,9 @@ def normalize_goodreads_value(value, field_type='text'):
     if field_type == 'isbn' and value:
         # Remove any remaining quotes or formatting for ISBNs
         value = value.replace('"', '').replace("'", "").replace('-', '').replace(' ', '')
+        # Restore leading zero stripped by spreadsheet apps (9-digit → 10-digit ISBN-10)
+        if value.isdigit() and len(value) == 9:
+            value = '0' + value
         # Only return if it looks like a valid ISBN (10 or 13 digits)
         if value.isdigit() and len(value) in [10, 13]:
             return value
