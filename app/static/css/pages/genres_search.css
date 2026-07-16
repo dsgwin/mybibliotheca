@@ -1,0 +1,29 @@
+/* Extracted from genres/search.html for browser caching. */
+
+.category-result {
+    transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+.category-result:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+}
+
+.color-indicator {
+    width: 16px;
+    height: 16px;
+    border-radius: 50%;
+    display: inline-block;
+    border: 1px solid #dee2e6;
+}
+
+.aliases .badge {
+    font-size: 0.7em;
+}
+
+code {
+    background-color: #f8f9fa;
+    padding: 2px 4px;
+    border-radius: 3px;
+    font-size: 0.9em;
+}

@@ -486,14 +486,9 @@ def settings():
             stats['avg_books_per_user'] = round(stats['books'] / stats['users'], 2)
     except Exception:
         pass
-    # Try to read version from pyproject once (could cache later)
     try:
-        import tomllib, os
-        pyproject_path = os.path.join(current_app.root_path, '..', 'pyproject.toml')
-        if os.path.exists(pyproject_path):
-            with open(pyproject_path, 'rb') as f:
-                data = tomllib.load(f)
-                stats['app_version'] = data.get('project', {}).get('version', stats['app_version'])
+        from app.template_context import get_app_version
+        stats['app_version'] = get_app_version()
     except Exception as e:
         current_app.logger.debug(f"Version load failed: {e}")
     return render_template('settings.html', title='Settings', site_name=site_name, stats=stats)

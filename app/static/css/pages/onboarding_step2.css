@@ -1,0 +1,5 @@
+/* Extracted from app/templates/onboarding/step2_site_config.html for browser caching. */
+
+/* Minor spacing tweak for onboarding’s global layout */
+.accordion { --bs-accordion-btn-padding-y: 1rem; --bs-accordion-btn-padding-x: 1.25rem; }
+.accordion-button { padding: var(--bs-accordion-btn-padding-y) var(--bs-accordion-btn-padding-x); width: 100%; display: flex; align-items: center; gap: .5rem; min-height: 3rem; }

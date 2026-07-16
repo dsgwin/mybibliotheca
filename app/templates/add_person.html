@@ -3,7 +3,7 @@
 {% block title %}Add Person - {{ site_name }}{% endblock %}
 
 {% block content %}
-<div class="container">
+<div class="container-fluid">
     <div class="row justify-content-center">
         <div class="col-lg-8">
             <!-- Header -->
@@ -129,30 +129,5 @@
     </div>
 </div>
 
-<script>
-document.addEventListener('DOMContentLoaded', function() {
-    const birthYearInput = document.getElementById('birth_year');
-    const deathYearInput = document.getElementById('death_year');
-    
-    // Validate death year is not before birth year
-    function validateYears() {
-        const birthYear = parseInt(birthYearInput.value);
-        const deathYear = parseInt(deathYearInput.value);
-        
-        if (birthYear && deathYear && deathYear < birthYear) {
-            deathYearInput.setCustomValidity('Death year cannot be before birth year');
-        } else {
-            deathYearInput.setCustomValidity('');
-        }
-    }
-    
-    birthYearInput.addEventListener('input', validateYears);
-    deathYearInput.addEventListener('input', validateYears);
-    
-    // Set max year to current year
-    const currentYear = new Date().getFullYear();
-    birthYearInput.max = currentYear;
-    deathYearInput.max = currentYear;
-});
-</script>
+<script src="{{ url_for('serve_static', filename='js/pages/add_person.js') }}?v={{ deploy_stamp }}"></script>
 {% endblock %}

@@ -4,7 +4,7 @@
 {% block title %}CSRF Protection Guide{% endblock %}
 
 {% block content %}
-<div class="container mt-4">
+<div class="container-fluid mt-4">
     <h1>CSRF Protection Implementation Guide</h1>
     
     <div class="alert alert-info">
@@ -71,39 +71,7 @@
             <button id="ajax-example" class="btn btn-info">Test AJAX Request</button>
             <div id="ajax-result" class="mt-2"></div>
             
-            <script>
-                document.getElementById('ajax-example').addEventListener('click', function() {
-                    // Method 1: Using the csrfFetch utility
-                    csrfFetch('/api/example', {
-                        method: 'POST',
-                        headers: {
-                            'Content-Type': 'application/json'
-                        },
-                        body: JSON.stringify({data: 'example'})
-                    })
-                    .then(response => response.json())
-                    .then(data => {
-                        document.getElementById('ajax-result').innerHTML = 
-                            '<div class="alert alert-success">AJAX request successful!</div>';
-                    })
-                    .catch(error => {
-                        document.getElementById('ajax-result').innerHTML = 
-                            '<div class="alert alert-danger">AJAX request failed: ' + error + '</div>';
-                    });
-                    
-                    // Method 2: Manual fetch with CSRF token
-                    /*
-                    fetch('/api/example', {
-                        method: 'POST',
-                        headers: {
-                            'Content-Type': 'application/json',
-                            'X-CSRFToken': window.csrfToken
-                        },
-                        body: JSON.stringify({data: 'example'})
-                    })
-                    */
-                });
-            </script>
+<script src="{{ url_for('serve_static', filename='js/pages/csrf_guide.js') }}?v={{ deploy_stamp }}"></script>
             <small class="text-muted">Uses the global csrfFetch() utility function</small>
         </div>
     </div>

@@ -1,0 +1,67 @@
+/* Extracted from add_book_fast.html for browser caching. */
+
+  @media (max-width: 768px) {
+    .add-book-header {
+      flex-wrap: wrap;
+    }
+    .add-book-header h1 {
+      flex: 1 1 100%;
+    }
+    .add-book-header .add-book-header-actions {
+      margin-top: 0.75rem;
+    }
+  }
+.recently-added-item {
+    transition: all 0.3s ease;
+}
+
+.recently-added-item:hover {
+    background-color: #f8f9fa;
+}
+
+.recently-added-item.just-added {
+    animation: highlight 2s ease-out;
+}
+
+@keyframes highlight {
+    0% { background-color: #d4edda; }
+    100% { background-color: transparent; }
+}
+
+#bookPreviewCard {
+    transition: all 0.3s ease;
+}
+
+#bookPreviewCard.saving {
+    opacity: 0.7;
+    pointer-events: none;
+}
+
+.undo-btn {
+    opacity: 0.7;
+}
+
+.undo-btn:hover {
+    opacity: 1;
+}
+
+/* Inline ISBN notification styling */
+#isbnNotification {
+    margin-bottom: 1rem;
+    animation: slideDown 0.3s ease-out;
+}
+
+@keyframes slideDown {
+    from {
+        opacity: 0;
+        transform: translateY(-10px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+#isbnNotification .bi {
+    font-size: 1.1em;
+}

@@ -27,6 +27,46 @@ def _genre_url_for(terminology_preference, endpoint, **values):
     return base_url
 
 
+_app_version_cache = None
+
+
+def get_app_version():
+    """Read the app version from pyproject.toml, cached for the process lifetime.
+
+    pyproject.toml's version must stay PEP 440-valid (uv/pip parse it), so a
+    fork suffix is stored as a "+local" segment (e.g. "2.0.1+dsgwin_fork");
+    this swaps the "+" for a "-" for a cleaner display string.
+    """
+    global _app_version_cache
+    if _app_version_cache is not None:
+        return _app_version_cache
+    version = 'unknown'
+    try:
+        import tomllib
+        pyproject_path = os.path.join(current_app.root_path, '..', 'pyproject.toml')
+        if os.path.exists(pyproject_path):
+            with open(pyproject_path, 'rb') as f:
+                data = tomllib.load(f)
+                version = data.get('project', {}).get('version', version)
+    except Exception:
+        pass
+    _app_version_cache = version.replace('+', '-')
+    return _app_version_cache
+
+
+def inject_app_version():
+    """Make the app version available in all templates."""
+    return {'app_version': get_app_version()}
+
+
+def inject_deploy_stamp():
+    """Make DEPLOY_STAMP available for cache-busting static asset URLs
+    (?v=...) so long-lived immutable Cache-Control on /static doesn't
+    serve a stale CSS/JS file to returning browsers after a redeploy."""
+    from app.utils.simple_cache import DEPLOY_STAMP
+    return {'deploy_stamp': DEPLOY_STAMP}
+
+
 def inject_debug_manager():
     """Make debug manager available in all templates."""
     try:
@@ -249,6 +289,8 @@ def inject_password_policy():
 def register_context_processors(app):
     """Register all context processors with the Flask app."""
     app.context_processor(inject_debug_manager)
+    app.context_processor(inject_app_version)
+    app.context_processor(inject_deploy_stamp)
     app.context_processor(inject_site_config)
     app.context_processor(inject_reading_streak)
     app.context_processor(inject_datetime)

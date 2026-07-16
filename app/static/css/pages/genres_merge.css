@@ -1,0 +1,38 @@
+/* Extracted from genres/merge.html for browser caching. */
+
+.required::after {
+    content: " *";
+    color: #dc3545;
+}
+
+.color-indicator {
+    width: 16px;
+    height: 16px;
+    border-radius: 50%;
+    display: inline-block;
+    border: 1px solid #dee2e6;
+}
+
+.category-preview {
+    padding: 10px;
+    border-left: 4px solid #007bff;
+    background: #f8f9fa;
+    margin-top: 10px;
+}
+
+.merge-arrow {
+    font-size: 2rem;
+    color: #ffc107;
+}
+
+#merge-summary {
+    font-weight: 500;
+}
+
+.list-unstyled li {
+    margin-bottom: 5px;
+}
+
+.list-unstyled li i {
+    width: 16px;
+}

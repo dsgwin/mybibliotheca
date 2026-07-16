@@ -1,0 +1,63 @@
+/* Extracted from public_library.html for browser caching. */
+
+  .book-card {
+    background: #fffbe6;
+    border: 2px solid #e0c9a6;
+    border-radius: 8px;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+    /* margin: 12px auto; */ /* Rely on column padding/margins */
+    /* width: 180px; */ /* Handled by Bootstrap column */
+    /* display: flex; */ /* Handled by Bootstrap card/grid or utilities */
+    /* flex-direction: column; */ /* Handled by Bootstrap card/grid or utilities */
+    /* align-items: center; */ /* Handled by Bootstrap card/grid or utilities */
+    width: 100%; /* Make card take full width of column */
+    height: 100%; /* Added for consistent card height in a row */
+    display: flex; /* Keep flex for internal card structure */
+    flex-direction: column; /* Keep flex for internal card structure */
+    align-items: center; /* Keep flex for internal card structure, or adjust if needed */
+    transition: transform 0.1s;
+  }
+  .book-card:hover {
+    transform: translateY(-4px) scale(1.03);
+    box-shadow: 0 6px 16px rgba(0,0,0,0.16);
+  }
+  .book-cover-shelf {
+    height: 120px; /* Or adjust/remove if using img-fluid to dictate height via aspect ratio */
+    width: auto;   /* Let height and image aspect ratio dictate width, up to max-width */
+    max-width: 100%; /* Ensure it doesn't overflow its container */
+    margin: 16px 0 8px 0;
+    border-radius: 4px;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.10);
+    background: #eee; /* Placeholder background */
+  }
+  .book-title {
+    font-size: 1.05em;
+    font-weight: bold;
+    text-align: center;
+    margin-bottom: 2px;
+    word-break: break-word;
+  }
+  .book-author {
+    font-size: 0.95em;
+    color: #555;
+    text-align: center;
+    margin-bottom: 4px;
+    word-break: break-word;
+  }
+  .book-badges {
+    margin-bottom: 8px;
+    text-align: center;
+  }
+  @media (max-width: 767px) {
+    /* .bookshelf-row { */
+      /* justify-content: center !important; */ /* Bootstrap grid handles this */
+    /* } */
+    /* .book-card { */
+      /* width: 90vw; */ /* Handled by Bootstrap column */
+      /* max-width: 320px; */ /* Handled by Bootstrap column */
+      /* margin: 10px auto; */ /* Handled by Bootstrap column */
+    /* } */
+    .book-cover-shelf {
+      height: 90px; /* Adjust cover height for smaller cards if needed */
+    }
+  }

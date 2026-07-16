@@ -1,0 +1,22 @@
+/* Extracted from app/templates/merge_persons.html for browser caching. */
+
+.merge-person-option {
+    border: 1px solid #dee2e6;
+    border-radius: 6px;
+    padding: 10px;
+    transition: all 0.2s;
+}
+
+.merge-person-option:hover {
+    background-color: #f8f9fa;
+    border-color: #adb5bd;
+}
+
+.merge-person-option.disabled {
+    opacity: 0.5;
+    pointer-events: none;
+}
+
+.form-check-input:checked + .form-check-label {
+    background-color: #fff3cd;
+}

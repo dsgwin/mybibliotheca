@@ -1,0 +1,139 @@
+/* Extracted from genres/hierarchy.html for browser caching. */
+
+.hierarchy-tree {
+    font-family: 'Courier New', monospace;
+    line-height: 1.8;
+}
+
+.tree-node {
+    position: relative;
+    margin-left: 0;
+    padding-left: 25px;
+}
+
+.tree-node::before {
+    content: '';
+    position: absolute;
+    left: 0;
+    top: 0;
+    bottom: 50%;
+    width: 20px;
+    border-left: 2px solid #dee2e6;
+    border-bottom: 2px solid #dee2e6;
+}
+
+.tree-node:last-child::before {
+    border-left-color: transparent;
+}
+
+.tree-node::after {
+    content: '';
+    position: absolute;
+    left: 0;
+    top: 0;
+    bottom: 0;
+    width: 2px;
+    background-color: #dee2e6;
+}
+
+.tree-node:last-child::after {
+    height: 50%;
+}
+
+.tree-root > .tree-node::before,
+.tree-root > .tree-node::after {
+    display: none;
+}
+
+.category-item {
+    background: #f8f9fa;
+    border: 1px solid #dee2e6;
+    border-radius: 6px;
+    padding: 8px 12px;
+    margin-bottom: 4px;
+    transition: all 0.2s ease;
+    position: relative;
+    z-index: 1;
+}
+
+.category-item:hover {
+    background: #e9ecef;
+    transform: translateX(2px);
+}
+
+.category-item.highlighted {
+    background: #fff3cd;
+    border-color: #ffeaa7;
+    box-shadow: 0 0 0 2px rgba(255, 193, 7, 0.25);
+}
+
+.expand-toggle {
+    background: none;
+    border: none;
+    color: #6c757d;
+    cursor: pointer;
+    padding: 2px 6px;
+    margin-right: 8px;
+    border-radius: 3px;
+    transition: all 0.2s ease;
+}
+
+.expand-toggle:hover {
+    background: #dee2e6;
+    color: #495057;
+}
+
+.expand-toggle.no-children {
+    visibility: hidden;
+}
+
+.tree-children {
+    margin-left: 20px;
+    margin-top: 5px;
+}
+
+.tree-children.collapsed {
+    display: none;
+}
+
+.stat-card {
+    transition: transform 0.2s;
+}
+
+.stat-card:hover {
+    transform: translateY(-2px);
+}
+
+.color-indicator {
+    width: 16px;
+    height: 16px;
+    border-radius: 50%;
+    display: inline-block;
+    border: 1px solid #dee2e6;
+}
+
+.category-meta {
+    font-size: 0.875rem;
+    color: #6c757d;
+}
+
+.action-buttons .btn {
+    padding: 2px 6px;
+    font-size: 0.75rem;
+}
+
+.search-highlight {
+    background-color: #ffeb3b;
+    padding: 1px 2px;
+    border-radius: 2px;
+}
+
+@media (max-width: 768px) {
+    .tree-node {
+        padding-left: 15px;
+    }
+    
+    .tree-children {
+        margin-left: 10px;
+    }
+}

@@ -2,65 +2,7 @@
 {% block title %}Debug Dashboard - Admin - MyBibliotheca{% endblock %}
 
 {% block content %}
-<style>
-  .debug-card {
-    border-left: 4px solid #007bff;
-  }
-  
-  .debug-enabled {
-    border-left-color: #28a745;
-  }
-  
-  .debug-disabled {
-    border-left-color: #dc3545;
-  }
-  
-  .log-entry {
-    border-left: 3px solid #dee2e6;
-    background: #f8f9fa;
-    margin-bottom: 0.5rem;
-  }
-  
-  .log-category {
-    font-size: 0.8rem;
-    font-weight: bold;
-  }
-  
-  .log-timestamp {
-    font-size: 0.75rem;
-    color: #6c757d;
-  }
-  
-  .log-message {
-    font-family: 'Monaco', 'Consolas', monospace;
-    font-size: 0.9rem;
-  }
-  
-  .log-extra {
-    background: #e9ecef;
-    font-family: 'Monaco', 'Consolas', monospace;
-    font-size: 0.8rem;
-  }
-  
-  .category-general { border-left-color: #6c757d; }
-  .category-location { border-left-color: #20c997; }
-  .category-book { border-left-color: #fd7e14; }
-  .category-user { border-left-color: #6f42c1; }
-  .category-test { border-left-color: #e83e8c; }
-  .category-error { border-left-color: #dc3545; }
-  .category-auth { border-left-color: #ffc107; }
-  
-  /* Dark mode adjustments */
-  [data-theme="dark"] .log-entry {
-    background: #2d3748;
-    color: #e2e8f0;
-  }
-  
-  [data-theme="dark"] .log-extra {
-    background: #4a5568;
-    color: #e2e8f0;
-  }
-</style>
+<link rel="stylesheet" href="{{ url_for('serve_static', filename='css/pages/admin_debug_dashboard.css') }}?v={{ deploy_stamp }}">
 
 <div class="container mt-4">
     <div class="row mb-4">

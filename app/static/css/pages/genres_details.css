@@ -1,0 +1,64 @@
+/* Extracted from genres/details.html for browser caching. */
+
+.color-indicator-large {
+    width: 20px;
+    height: 20px;
+    border-radius: 4px;
+    display: inline-block;
+    margin-bottom: 2px;
+}
+
+.hierarchy-path .breadcrumb-item + .breadcrumb-item::before {
+    content: "→";
+    font-weight: bold;
+}
+
+.aliases .badge {
+    font-size: 0.8em;
+}
+
+.card {
+    transition: transform 0.2s, box-shadow 0.2s;
+}
+
+.card:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+}
+
+.card-img-top {
+    transition: transform 0.2s;
+}
+
+.card:hover .card-img-top {
+    transform: scale(1.05);
+}
+
+.badge {
+    font-size: 0.75rem;
+}
+
+/* Fix dropdown z-index to ensure it appears above other elements */
+.dropdown-menu {
+    z-index: 1055 !important;
+    position: absolute !important;
+}
+
+.btn-group .dropdown-menu {
+    z-index: 1055 !important;
+    position: absolute !important;
+}
+
+/* Ensure dropdown toggle button has proper positioning */
+.btn-group {
+    position: relative !important;
+}
+
+/* Fix for Bootstrap dropdown positioning issues */
+.dropdown {
+    position: relative !important;
+}
+
+.dropdown-toggle::after {
+    vertical-align: 0.125em;
+}

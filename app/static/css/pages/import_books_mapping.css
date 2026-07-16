@@ -1,0 +1,124 @@
+/* Extracted from app/templates/import_books_mapping.html for browser caching. */
+
+/* Dark mode enhancements for Import Books Mapping */
+[data-theme="dark"] .text-muted {
+    color: #b0b0b0 !important;
+}
+
+[data-theme="dark"] small.text-muted,
+[data-theme="dark"] .small.text-muted {
+    color: #c0c0c0 !important;
+}
+
+[data-theme="dark"] .form-text {
+    color: #c0c0c0 !important;
+}
+
+[data-theme="dark"] .card {
+    background-color: rgba(40, 40, 40, 0.8) !important;
+    border-color: #404040 !important;
+    color: #e0e0e0 !important;
+}
+
+[data-theme="dark"] .card-header {
+    background-color: rgba(60, 60, 60, 0.8) !important;
+    border-bottom-color: #404040 !important;
+    color: #e0e0e0 !important;
+}
+
+[data-theme="dark"] .card-body {
+    color: #e0e0e0 !important;
+}
+
+[data-theme="dark"] .alert-info {
+    background-color: rgba(13, 110, 253, 0.1) !important;
+    border-color: rgba(13, 110, 253, 0.3) !important;
+    color: #6ea8fe !important;
+}
+
+[data-theme="dark"] .alert-success {
+    background-color: rgba(25, 135, 84, 0.1) !important;
+    border-color: rgba(25, 135, 84, 0.3) !important;
+    color: #51cf66 !important;
+}
+
+[data-theme="dark"] .table {
+    color: #e0e0e0 !important;
+    background-color: transparent !important;
+}
+
+[data-theme="dark"] .table th,
+[data-theme="dark"] .table td {
+    border-color: #404040 !important;
+    color: #e0e0e0 !important;
+    background-color: transparent !important;
+}
+
+[data-theme="dark"] .table-sm th,
+[data-theme="dark"] .table-sm td {
+    color: #e0e0e0 !important;
+    background-color: transparent !important;
+}
+
+[data-theme="dark"] .table thead th {
+    background-color: rgba(60, 60, 60, 0.8) !important;
+    border-color: #404040 !important;
+    color: #f8f9fa !important;
+}
+
+[data-theme="dark"] .table tbody tr {
+    background-color: transparent !important;
+}
+
+[data-theme="dark"] .table tbody tr:nth-of-type(odd) {
+    background-color: rgba(255, 255, 255, 0.05) !important;
+}
+
+[data-theme="dark"] .table tbody tr:hover {
+    background-color: rgba(255, 255, 255, 0.1) !important;
+}
+
+[data-theme="dark"] .table-responsive {
+    border: 1px solid #404040 !important;
+    border-radius: 8px;
+    background-color: transparent !important;
+}
+
+[data-theme="dark"] .form-label {
+    color: #e0e0e0 !important;
+}
+
+[data-theme="dark"] .form-label .text-muted {
+    color: #b0b0b0 !important;
+}
+
+[data-theme="dark"] .form-control, 
+[data-theme="dark"] .form-select {
+    background-color: #495057 !important;
+    border-color: #6c757d !important;
+    color: #fff !important;
+}
+
+[data-theme="dark"] .form-control:focus,
+[data-theme="dark"] .form-select:focus {
+    background-color: #495057 !important;
+    border-color: #86b7fe !important;
+    color: #fff !important;
+    box-shadow: 0 0 0 0.25rem rgba(13, 110, 253, 0.25) !important;
+}
+
+[data-theme="dark"] .form-check-label {
+    color: #e0e0e0 !important;
+}
+
+[data-theme="dark"] .list-unstyled li {
+    color: #e0e0e0 !important;
+}
+
+[data-theme="dark"] .badge {
+    color: #000 !important;
+}
+
+[data-theme="dark"] .text-success {
+    color: #51cf66 !important;
+}

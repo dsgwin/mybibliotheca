@@ -126,28 +126,4 @@
     <button class="btn btn-primary"><i class="bi bi-check2 me-1"></i>Save</button>
   </div>
 </form>
-<script>
-(function(){
-  const typeSel = document.getElementById('bgType');
-  const toggleScope = typeSel ? (typeSel.closest('form') || document) : document;
-  function sync(){
-    if(!typeSel) return;
-    const type = typeSel.value;
-    toggleScope.querySelectorAll('[data-bg]').forEach(el=>{
-      const match = el.getAttribute('data-bg')===type;
-      el.style.display = match ? '' : 'none';
-      if(match && type==='gradient'){
-        el.style.display = 'flex';
-      }
-    });
-  }
-  if(typeSel && !typeSel.dataset.bgBoundLegacy){
-    typeSel.addEventListener('change', sync);
-    typeSel.dataset.bgBoundLegacy = '1';
-  }
-  sync();
-  if(typeof window.ensureServerConfigBindings === 'function'){
-    try { window.ensureServerConfigBindings(); } catch(_) {}
-  }
-})();
-</script>
+<script src="{{ url_for('serve_static', filename='js/pages/admin_server_config.js') }}?v={{ deploy_stamp }}"></script>
