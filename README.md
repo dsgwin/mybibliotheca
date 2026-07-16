@@ -50,6 +50,27 @@ View comprehensive book information including genres, authors, reading status, p
 
 #### 🚀 Docker Quick Start: [View Documentation](https://mybibliotheca.org/)
 
+---
+
+## 🛠️ Enhancements in This Fork
+
+This fork builds on the last upstream release with the following additions:
+
+### New Features
+- 🤝 **Book Loans**: Track books you've loaned out from **More → Loans** — record a borrower's name, phone number, and loan date, then mark returned when the book comes back. A "Loaned Out" filter on the library page shows everything currently out.
+- 🏷️ **Curated Genre Filtering**: Genres pulled from Google Books/OpenLibrary are matched against an allowlist of ~150 common English genres, with foreign-language labels filtered out and near-duplicates normalized (e.g. *Sci-Fi* → *Science Fiction*), capped at 5 genres per book.
+- 🥧 **Raspberry Pi / ARM Support**: Dedicated `Dockerfile.pi` and `docker-compose.pi.yml` using ARM-friendly wheels (piwheels, headless OpenCV) and a tuned KuzuDB `max_db_size` so the database no longer crashes on ARM's constrained virtual address space.
+- ⚙️ **One-Command Setup**: `./setup.sh` generates a `.env` with fresh secrets, auto-detects ARM hardware to pick the right Docker Compose file, and optionally prompts for a personal Google Books API key.
+- 🔑 **Personal Google Books API Key**: Set `GOOGLE_BOOKS_API_KEY` to use your own quota instead of sharing a default key, avoiding HTTP 429 rate-limit errors during metadata lookups and imports.
+
+### Reliability Fixes
+- 🔄 **Stale Page Fixes**: The Library and Stats pages now correctly refresh after adding books, logging reading sessions, running bulk/CSV imports, or changing the background image in admin settings — previously these could keep showing cached (304'd) content well after the underlying data changed.
+- 🪟 **Modals Fixed Sitewide**: Removed CSS stacking-context bugs that trapped Bootstrap modals behind their backdrop.
+- 🖼️ **Custom Backgrounds & Cover Uploads**: Fixed the Aurora theme overriding configured background images, and fixed uploaded covers reverting to the default placeholder.
+- 🔢 **ISBN Handling**: 9-digit ISBN-10s (as exported by Excel/Sheets, which strip leading zeros) are now padded and matched correctly during CSV import and metadata lookups.
+- 📚 **Genre Counts**: Per-user genre counts on the library page no longer show library-wide totals.
+
+---
 
 ## 🗂️ Project Structure
 
