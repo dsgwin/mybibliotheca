@@ -2572,10 +2572,11 @@ def library():
                 'locations': getattr(b, 'locations', []) if not isinstance(b, dict) else b.get('locations', []),
             }
             payload.append(bd)
-        # ETag based on user, page/filter/sort, version, and deploy stamp
-        from app.utils.simple_cache import get_user_library_version, DEPLOY_STAMP
+        # ETag based on user, page/filter/sort, version, config version, and deploy stamp
+        from app.utils.simple_cache import get_user_library_version, get_config_version, DEPLOY_STAMP
         version = get_user_library_version(str(current_user.id))
-        etag = f"W/\"lib:{current_user.id}:{page}:{rows}:{cols}:{per_page}:{status_filter}:{category_filter}:{publisher_filter}:{language_filter}:{location_filter}:{media_type_filter}:{finished_after_raw}:{finished_before_raw}:{search_query}:{sort_option}:v{version}:d{DEPLOY_STAMP}\""
+        config_version = get_config_version()
+        etag = f"W/\"lib:{current_user.id}:{page}:{rows}:{cols}:{per_page}:{status_filter}:{category_filter}:{publisher_filter}:{language_filter}:{location_filter}:{media_type_filter}:{finished_after_raw}:{finished_before_raw}:{search_query}:{sort_option}:v{version}:c{config_version}:d{DEPLOY_STAMP}\""
         if request.headers.get('If-None-Match') == etag:
             return ('', 304)
         resp = make_response(jsonify({
@@ -2590,9 +2591,10 @@ def library():
         return resp
 
     # ETag for HTML response too — includes deploy stamp so restarts always bust stale browser cache
-    from app.utils.simple_cache import get_user_library_version, DEPLOY_STAMP
+    from app.utils.simple_cache import get_user_library_version, get_config_version, DEPLOY_STAMP
     _version = get_user_library_version(str(current_user.id))
-    _html_etag = f"W/\"libhtml:{current_user.id}:{page}:{rows}:{cols}:{per_page}:{status_filter}:{category_filter}:{publisher_filter}:{language_filter}:{location_filter}:{media_type_filter}:{finished_after_raw}:{finished_before_raw}:{search_query}:{sort_option}:v{_version}:d{DEPLOY_STAMP}\""
+    _config_version = get_config_version()
+    _html_etag = f"W/\"libhtml:{current_user.id}:{page}:{rows}:{cols}:{per_page}:{status_filter}:{category_filter}:{publisher_filter}:{language_filter}:{location_filter}:{media_type_filter}:{finished_after_raw}:{finished_before_raw}:{search_query}:{sort_option}:v{_version}:c{_config_version}:d{DEPLOY_STAMP}\""
     if request.headers.get('If-None-Match') == _html_etag:
         return ('', 304)
 

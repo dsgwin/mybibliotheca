@@ -25,6 +25,9 @@ services:
       
       # CRITICAL: Single worker for KuzuDB compatibility
       - WORKERS=1
+
+      # Metadata provider keys (value comes from the gitignored .env file)
+      - GOOGLE_BOOKS_API_KEY=${GOOGLE_BOOKS_API_KEY}
     restart: unless-stopped
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:5054/"]

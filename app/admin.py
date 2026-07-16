@@ -344,11 +344,19 @@ def save_system_config(config):
             library_defaults['default_book_format'] = MediaType.PHYSICAL.value
         existing_config['library_defaults'] = library_defaults
         existing_config['last_updated'] = datetime.now().isoformat()
-        
+
         # Save updated config
         with open(config_path, 'w') as f:
             json.dump(existing_config, f, indent=2)
-        
+
+        # Bust cached/ETag'd pages (library, stats, ...) so changes like the
+        # background image show up immediately instead of waiting for a 304.
+        try:
+            from app.utils.simple_cache import bump_config_version
+            bump_config_version()
+        except Exception:
+            pass
+
         return True
     except Exception as e:
         # Log error if we have current_app context, otherwise print

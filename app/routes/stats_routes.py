@@ -534,11 +534,17 @@ def index():
             'total_time_formatted': '0m'
         }
 
-    # Add simple ETag and Cache-Control for the full HTML
+    # Add simple ETag and Cache-Control for the full HTML.
+    # Must include the user's library version (bumped on any book/reading-log
+    # change) and the site config version (bumped on admin settings changes
+    # like the background image) — a plain day-based key never invalidates
+    # when the underlying data actually changes within the same day.
     try:
-        # Use user id and day marker for a coarse ETag; refine as needed
+        from app.utils.simple_cache import get_user_library_version, get_config_version, DEPLOY_STAMP
         uid = str(getattr(current_user, 'id', 'unknown'))
-        etag = f"W/\"stats:{uid}:{today.isoformat()}\""
+        version = get_user_library_version(uid)
+        config_version = get_config_version()
+        etag = f"W/\"stats:{uid}:{today.isoformat()}:v{version}:c{config_version}:d{DEPLOY_STAMP}\""
         if request.headers.get('If-None-Match') == etag:
             return ('', 304)
     except Exception:

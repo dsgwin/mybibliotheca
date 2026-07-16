@@ -131,6 +131,12 @@ def create_reading_log_entry():
             except Exception as ensure_exc:
                 logger.warning(f"Unable to ensure reading metadata for book {book_id}: {ensure_exc}")
 
+            try:
+                from app.utils.simple_cache import bump_user_library_version
+                bump_user_library_version(str(current_user.id))
+            except Exception:
+                pass
+
             return jsonify({
                 'status': 'success',
                 'message': f'Logged {pages_read_int} pages' + (f' and {minutes_read_int} minutes' if minutes_read_int > 0 else '') + ' of reading!'
@@ -402,8 +408,13 @@ def delete_reading_log(log_id):
     """Delete a reading log entry."""
     try:
         success = reading_log_service.delete_reading_log_sync(log_id, current_user.id)
-        
+
         if success:
+            try:
+                from app.utils.simple_cache import bump_user_library_version
+                bump_user_library_version(str(current_user.id))
+            except Exception:
+                pass
             flash('Reading log entry deleted successfully', 'success')
         else:
             flash('Failed to delete reading log entry', 'error')
@@ -497,8 +508,13 @@ def edit_reading_log(log_id):
         
         # Update the log
         result = reading_log_service.update_reading_log_sync(log_id, updated_log)
-        
+
         if result:
+            try:
+                from app.utils.simple_cache import bump_user_library_version
+                bump_user_library_version(str(current_user.id))
+            except Exception:
+                pass
             flash('Reading log updated successfully', 'success')
             return redirect(url_for('reading_logs.my_reading_logs'))
         else:
@@ -566,8 +582,13 @@ def quick_add_bookless_log():
         )
         
         result = reading_log_service.create_reading_log_sync(reading_log)
-        
+
         if result:
+            try:
+                from app.utils.simple_cache import bump_user_library_version
+                bump_user_library_version(str(current_user.id))
+            except Exception:
+                pass
             return jsonify({
                 'status': 'success',
                 'message': 'Reading log added successfully',

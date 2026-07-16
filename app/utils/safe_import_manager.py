@@ -134,6 +134,16 @@ class SafeImportJobManager:
                     self._increment_stat('jobs_completed')
                 elif status == 'failed':
                     self._increment_stat('jobs_failed')
+
+                # Any terminal "completed*" status (e.g. completed_with_errors)
+                # means books/logs may have been written — bust the user's
+                # library/stats cache so the results show up without a stale 304.
+                if str(status).startswith('completed'):
+                    try:
+                        from app.utils.simple_cache import bump_user_library_version
+                        bump_user_library_version(str(user_id))
+                    except Exception:
+                        pass
             
             logger.debug(f"Updated job {task_id} for user {user_id}: {list(updates.keys())}")
             

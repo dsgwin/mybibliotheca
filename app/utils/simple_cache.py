@@ -41,6 +41,8 @@ class TTLCache:
 _cache = TTLCache()
 _user_versions: Dict[str, int] = {}
 _version_lock = threading.Lock()
+_config_version = 0
+_config_version_lock = threading.Lock()
 
 # Stamp baked at import time; changes on every process start / deployment.
 # Included in ETags so browsers always fetch fresh content after a restart.
@@ -65,6 +67,19 @@ def bump_user_library_version(user_id: str) -> int:
         current = int(_user_versions.get(user_id, 0)) + 1
         _user_versions[user_id] = current
         return current
+
+
+def get_config_version() -> int:
+    """Site-wide config version (bumped on admin settings changes, e.g. background image)."""
+    with _config_version_lock:
+        return _config_version
+
+
+def bump_config_version() -> int:
+    global _config_version
+    with _config_version_lock:
+        _config_version += 1
+        return _config_version
 
 
 def cached(ttl_seconds: int = 60, key_builder: Optional[Callable] = None):
