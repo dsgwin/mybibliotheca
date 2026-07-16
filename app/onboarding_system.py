@@ -450,16 +450,6 @@ def site_config_step():
             except Exception as e:
                 logger.warning(f"⚠️ ONBOARDING DEBUG: Error capturing backup settings in step 2: {e}")
 
-            # Persist Google Books API key (optional) from onboarding step 2
-            try:
-                google_books_api_key = (request.form.get('google_books_api_key') or '').strip()
-                if google_books_api_key:
-                    from .admin import save_google_books_config
-                    save_google_books_config(google_books_api_key)
-                    logger.info("🔍 ONBOARDING DEBUG: Saved Google Books API key from onboarding step 2")
-            except Exception as gb_err:
-                logger.warning(f"⚠️ ONBOARDING DEBUG: Failed to save Google Books API key during onboarding: {gb_err}")
-
             # Persist Audiobookshelf basics (no API key) from onboarding step 2
             try:
                 from .utils.audiobookshelf_settings import save_abs_settings
@@ -565,17 +555,8 @@ def site_config_step():
     except Exception as e:
         logger.warning(f"⚠️ ONBOARDING DEBUG: Could not load ABS settings for template: {e}")
 
-    # Prefill Google Books API key if one was already set (e.g. via env var)
-    google_books_api_key = ''
-    try:
-        from .admin import load_google_books_config
-        google_books_api_key = load_google_books_config().get('GOOGLE_BOOKS_API_KEY', '')
-    except Exception as e:
-        logger.warning(f"⚠️ ONBOARDING DEBUG: Could not load Google Books config for template: {e}")
-
     return render_template('onboarding/step2_site_config.html',
                          timezones=timezones,
-                         google_books_api_key=google_books_api_key,
                          current_config=display_config,
                          abs_settings=abs_settings,
                          step=2,

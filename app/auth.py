@@ -16,8 +16,6 @@ from app.admin import (
     load_smtp_config,
     save_backup_config,
     load_backup_config,
-    save_google_books_config,
-    load_google_books_config,
     _log,
     _log_force,
 )
@@ -1886,8 +1884,7 @@ def settings_server_partial(panel: str):
                 traceback.print_exc(file=sys.stderr)
                 return jsonify({'ok': False, 'error': 'save_failed'}), 400
         metadata_settings = get_metadata_settings()
-        google_books_api_key = load_google_books_config().get('GOOGLE_BOOKS_API_KEY', '')
-        return render_template('settings/partials/server_metadata.html', metadata_settings=metadata_settings, google_books_api_key=google_books_api_key)
+        return render_template('settings/partials/server_metadata.html', metadata_settings=metadata_settings)
     if panel == 'repairs':
         if not current_user.is_admin:
             return '<div class="text-danger small">Not authorized.</div>'
@@ -2160,36 +2157,6 @@ def save_ai_settings():
         ctx['ai_config'] = load_ai_config()
         return render_template('settings/partials/server_ai.html', **ctx)
     return redirect(url_for('auth.settings', section='server', panel='ai'))
-
-
-@auth.route('/settings/server/metadata/google-books-key', methods=['POST'])
-@login_required
-@admin_required
-def save_google_books_key():
-    """Persist the Google Books API key from the Server > Metadata settings panel."""
-    try:
-        api_key = request.form.get('google_books_api_key', '')
-        if save_google_books_config(api_key):
-            flash('Google Books API key saved.' if api_key.strip() else 'Google Books API key cleared.', 'success')
-        else:
-            flash('Error saving Google Books API key. Please try again.', 'danger')
-    except Exception as exc:
-        _log('error', f"Error updating Google Books API key: {exc}")
-        flash('Error saving Google Books API key. Please try again.', 'danger')
-
-    expects_partial = (
-        request.form.get('inline') == '1'
-        or request.headers.get('X-Requested-With') == 'XMLHttpRequest'
-        or request.headers.get('HX-Request')
-    )
-    if expects_partial:
-        from app.utils.metadata_settings import get_metadata_settings
-        return render_template(
-            'settings/partials/server_metadata.html',
-            metadata_settings=get_metadata_settings(),
-            google_books_api_key=load_google_books_config().get('GOOGLE_BOOKS_API_KEY', '')
-        )
-    return redirect(url_for('auth.settings', section='server', panel='metadata'))
 
 
 @auth.route('/settings/server/ai/test', methods=['POST'])

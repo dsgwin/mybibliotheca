@@ -299,11 +299,7 @@ def _fetch_google_by_isbn(isbn: str) -> Dict[str, Any]:
 	2) Highest date specificity of volumeInfo.publishedDate
 	Fallback to the first item if list is empty.
 	"""
-	try:
-		from app.admin import load_google_books_config
-		api_key = (load_google_books_config().get('GOOGLE_BOOKS_API_KEY') or '').strip()
-	except Exception:
-		api_key = os.getenv('GOOGLE_BOOKS_API_KEY', '').strip()
+	api_key = os.getenv('GOOGLE_BOOKS_API_KEY', '').strip()
 	url = f"https://www.googleapis.com/books/v1/volumes?q=isbn:{isbn}"
 	if api_key:
 		url += f"&key={api_key}"
