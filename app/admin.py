@@ -565,6 +565,73 @@ def load_smtp_config():
         'smtp_from_name': smtp_config.get('smtp_from_name', default_from_name)
     }
 
+def _get_metadata_provider_keys_path() -> str:
+    try:
+        data_dir = current_app.config.get('DATA_DIR', 'data')
+    except Exception:
+        data_dir = 'data'
+    return os.path.join(data_dir, 'metadata_provider_keys.json')
+
+
+def load_google_books_config() -> Dict[str, str]:
+    """Load the Google Books API key: env var as base, overlaid by the
+    runtime-persisted JSON (data/metadata_provider_keys.json) so changes
+    made via onboarding/Settings survive restarts even without a mounted
+    root .env (e.g. in Docker)."""
+    import json
+    config: Dict[str, str] = {'GOOGLE_BOOKS_API_KEY': os.getenv('GOOGLE_BOOKS_API_KEY', '')}
+    try:
+        keys_path = _get_metadata_provider_keys_path()
+        if os.path.exists(keys_path):
+            with open(keys_path, 'r') as jf:
+                json_data = json.load(jf) or {}
+            if isinstance(json_data.get('GOOGLE_BOOKS_API_KEY'), str):
+                config['GOOGLE_BOOKS_API_KEY'] = json_data['GOOGLE_BOOKS_API_KEY']
+    except Exception as e:
+        try:
+            _log('warning', f"Failed reading metadata_provider_keys.json: {e}")
+        except Exception:
+            pass
+    return config
+
+
+def save_google_books_config(api_key: str) -> bool:
+    """Persist the Google Books API key to data/metadata_provider_keys.json
+    and update the current process env so it takes effect immediately."""
+    import json
+    api_key = (api_key or '').strip()
+    try:
+        try:
+            data_dir = current_app.config.get('DATA_DIR', 'data')
+        except Exception:
+            data_dir = 'data'
+        os.makedirs(data_dir, exist_ok=True)
+        keys_path = _get_metadata_provider_keys_path()
+        json_data = {}
+        if os.path.exists(keys_path):
+            try:
+                with open(keys_path, 'r') as jf:
+                    json_data = json.load(jf) or {}
+            except Exception:
+                json_data = {}
+        json_data['GOOGLE_BOOKS_API_KEY'] = api_key
+        with open(keys_path, 'w') as jf:
+            json.dump(json_data, jf, indent=2)
+
+        if api_key:
+            os.environ['GOOGLE_BOOKS_API_KEY'] = api_key
+        else:
+            os.environ.pop('GOOGLE_BOOKS_API_KEY', None)
+
+        return True
+    except Exception as e:
+        try:
+            _log('error', f"Error saving Google Books config: {e}")
+        except Exception:
+            print(f"Error saving Google Books config: {e}")
+        return False
+
+
 def save_ai_config(config):
     """Safely update AI configuration keys: write to .env and persist overrides JSON."""
     env_path = _get_root_env_path()

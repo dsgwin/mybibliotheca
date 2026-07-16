@@ -94,16 +94,6 @@ if [[ -n "$tz_input" ]]; then
     info "Timezone set to ${tz_input}."
 fi
 
-# ── Optional: Google Books API key ──────────────────────────────────────────
-echo ""
-echo -e "  A Google Books API key avoids ISBN lookup quota errors."
-echo -e "  Get one free at: ${CYAN}https://console.cloud.google.com/${NC} → APIs & Services → Books API"
-read -rp "  Enter your Google Books API key (leave blank to skip): " gb_key
-if [[ -n "$gb_key" ]]; then
-    sed -i "s|^# GOOGLE_BOOKS_API_KEY=.*|GOOGLE_BOOKS_API_KEY=${gb_key}|" .env
-    info "Google Books API key saved."
-fi
-
 # ── Docker build & start ─────────────────────────────────────────────────────
 echo ""
 read -rp "Build and start MyBibliotheca now? [Y/n] " run_input
