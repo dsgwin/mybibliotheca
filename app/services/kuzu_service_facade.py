@@ -500,6 +500,10 @@ class KuzuServiceFacade:
     def get_category_book_counts_sync(self) -> Dict[str, int]:
         """Get book counts for all categories."""
         return self.category_service.get_category_book_counts_sync()
+
+    def get_category_book_id_map_for_user_sync(self, user_id: str) -> Dict[str, List[str]]:
+        """Get category_id -> [book_id, ...] mapping for a user's library in a single query."""
+        return self.category_service.get_category_book_id_map_for_user_sync(user_id)
     
     def search_categories_sync(self, query: str, limit: int = 10, user_id: Optional[str] = None) -> List[Dict[str, Any]]:
         """Search categories by name or description."""

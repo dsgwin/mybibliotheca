@@ -75,30 +75,26 @@ def index():
         all_categories = book_service.list_all_categories_sync()
         if all_categories is None:
             all_categories = []
-        
-        # Calculate book counts for each category using the working method
+
+        # Single query: category_id -> [book_id, ...] for this user's library.
+        # Replaces what used to be one get_books_by_category_sync() call per
+        # category (N+1) for both the per-category counts below and the
+        # de-duplicated total_book_count computed further down.
+        book_ids_by_category = book_service.get_category_book_id_map_for_user_sync(str(current_user.id))
+
+        # Assign book counts for each category from the batched map
         def calculate_book_counts(categories):
             for cat in categories:
                 cat_id = get_attr(cat, 'id')
-                if cat_id:
-                    # Use the same method that works in category details
-                    category_books = book_service.get_books_by_category_sync(cat_id, str(current_user.id))
-                    book_count = len(category_books or [])
-                    
-                    # Set the book count
-                    if isinstance(cat, dict):
-                        cat['book_count'] = book_count
-                    else:
-                        cat.book_count = book_count
+                book_count = len(book_ids_by_category.get(cat_id, [])) if cat_id else 0
+                if isinstance(cat, dict):
+                    cat['book_count'] = book_count
                 else:
-                    if isinstance(cat, dict):
-                        cat['book_count'] = 0
-                    else:
-                        cat.book_count = 0
-        
+                    cat.book_count = book_count
+
         # Calculate book counts before processing
         calculate_book_counts(all_categories)
-        
+
         # Convert dictionaries to objects for template compatibility
         processed_categories = []
         
@@ -133,22 +129,24 @@ def index():
                     cat.children = []
                 processed_categories.append(cat)
         
-        # Get children for all categories
+        # Get children for all categories: group the already-fetched category
+        # list by parent_id in a single pass instead of querying the DB once
+        # per category.
+        children_by_parent_id = {}
+        for cat in processed_categories:
+            parent_id = get_attr(cat, 'parent_id')
+            if parent_id:
+                children_by_parent_id.setdefault(parent_id, []).append(cat)
+
         def get_children_for_categories(categories):
             for cat in categories:
                 cat_id = get_attr(cat, 'id')
-                if cat_id:
-                    children = book_service.get_category_children_sync(cat_id, str(current_user.id))
-                    if isinstance(cat, dict):
-                        cat['children'] = children or []
-                    else:
-                        cat.children = children or []
+                children = children_by_parent_id.get(cat_id, []) if cat_id else []
+                if isinstance(cat, dict):
+                    cat['children'] = children
                 else:
-                    if isinstance(cat, dict):
-                        cat['children'] = []
-                    else:
-                        cat.children = []
-        
+                    cat.children = children
+
         # Populate children for all categories
         get_children_for_categories(processed_categories)
         
@@ -215,18 +213,13 @@ def index():
             if parent_id:  # Has a parent, so it's a subcategory
                 subcategory_count += 1
         
-        # Calculate total books across all categories (prevent double counting)
-        total_book_count = 0
-        counted_books = set()  # Track books to prevent double counting
-        for category in all_categories:
-            category_id = get_attr(category, 'id')
-            if category_id:
-                category_books = book_service.get_books_by_category_sync(category_id, str(current_user.id)) or []
-                for book in category_books:
-                    book_id = get_attr(book, 'id')
-                    if book_id and book_id not in counted_books:
-                        counted_books.add(book_id)
-                        total_book_count += 1
+        # Calculate total books across all categories (prevent double counting),
+        # reusing the batched category -> book_ids map fetched above instead of
+        # re-querying per category.
+        counted_books = set()
+        for book_ids in book_ids_by_category.values():
+            counted_books.update(book_ids)
+        total_book_count = len(counted_books)
         
         return render_template('genres/index.html', 
                              categories=categories, 
@@ -248,67 +241,56 @@ def hierarchy_view():
     """Display categories in a hierarchical tree view."""
     try:
         current_app.logger.info("Loading hierarchy view...")
-        root_categories = book_service.get_root_categories_sync(str(current_user.id))
-        current_app.logger.info(f"Got {len(root_categories) if root_categories else 0} root categories")
-        
-        # Function to add book counts to categories using the working method
-        def add_book_counts_to_categories(categories):
-            for category in categories:
-                category_id = get_attr(category, 'id')
-                if category_id:
-                    # Use the same method that works in category details
-                    category_books = book_service.get_books_by_category_sync(category_id, str(current_user.id))
-                    book_count = len(category_books or [])
-                    
-                    if isinstance(category, dict):
-                        category['book_count'] = book_count
-                    else:
-                        category.book_count = book_count
-                else:
-                    if isinstance(category, dict):
-                        category['book_count'] = 0
-                    else:
-                        category.book_count = 0
-        
-        # Add book counts to root categories
-        add_book_counts_to_categories(root_categories)
-        
-        # For each root category, we'll build the full tree structure
+
+        # Fetch everything needed in two queries instead of one (or two) per
+        # category: the full category list, and a category_id -> [book_id]
+        # map for this user's library.
+        all_categories = book_service.list_all_categories_sync() or []
+        book_ids_by_category = book_service.get_category_book_id_map_for_user_sync(str(current_user.id))
+
+        def book_count_for(category_id):
+            return len(book_ids_by_category.get(category_id, [])) if category_id else 0
+
+        # Group categories by parent_id once, then build the tree from memory.
+        children_by_parent_id = {}
+        root_categories = []
+        for category in all_categories:
+            parent_id = get_attr(category, 'parent_id')
+            if parent_id:
+                children_by_parent_id.setdefault(parent_id, []).append(category)
+            else:
+                root_categories.append(category)
+        root_categories.sort(key=lambda c: get_attr(c, 'name', '').lower())
+        for siblings in children_by_parent_id.values():
+            siblings.sort(key=lambda c: get_attr(c, 'name', '').lower())
+
+        current_app.logger.info(f"Got {len(root_categories)} root categories")
+
         def build_tree(categories, current_level=0):
             tree = []
             for category in categories:
-                # Set the correct level for this category
                 if isinstance(category, dict):
                     category['level'] = current_level
+                    category['book_count'] = book_count_for(get_attr(category, 'id'))
                 else:
                     category.level = current_level
-                
-                category_id = get_attr(category, 'id')
-                if category_id:
-                    children = book_service.get_category_children_sync(category_id, str(current_user.id))
-                    if children:
-                        # Add book counts to children
-                        add_book_counts_to_categories(children)
-                        # Set children attribute safely for both dicts and objects
-                        if isinstance(category, dict):
-                            category['children'] = build_tree(children, current_level + 1)
-                        else:
-                            category.children = build_tree(children, current_level + 1)
-                    else:
-                        if isinstance(category, dict):
-                            category['children'] = []
-                        else:
-                            category.children = []
-                    tree.append(category)
+                    category.book_count = book_count_for(get_attr(category, 'id'))
+
+                children = children_by_parent_id.get(get_attr(category, 'id'), [])
+                built_children = build_tree(children, current_level + 1) if children else []
+                if isinstance(category, dict):
+                    category['children'] = built_children
+                else:
+                    category.children = built_children
+                tree.append(category)
             return tree
-        
+
         category_tree = build_tree(root_categories, 0) if root_categories else []
-        
+
         # Calculate hierarchy statistics
-        all_categories = book_service.list_all_categories_sync() or []
         total_categories = len(all_categories)
-        root_categories_count = len(root_categories) if root_categories else 0
-        
+        root_categories_count = len(root_categories)
+
         # Calculate max depth
         def get_max_depth(tree, current_depth=0):
             if not tree:
@@ -320,18 +302,14 @@ def hierarchy_view():
                     depth = get_max_depth(children, current_depth + 1)
                     max_depth = max(max_depth, depth)
             return max_depth
-        
+
         max_depth = get_max_depth(category_tree)
-        
-        # Calculate total books across all categories
-        all_categories = book_service.list_all_categories_sync() or []
-        total_books = 0
-        for category in all_categories:
-            category_id = get_attr(category, 'id')
-            if category_id:
-                category_books = book_service.get_books_by_category_sync(category_id, str(current_user.id))
-                total_books += len(category_books or [])
-        
+
+        # Calculate total books across all categories (sum per-category counts,
+        # matching prior behavior where a book in multiple categories is
+        # counted once per category), reusing the batched map fetched above.
+        total_books = sum(len(book_ids) for book_ids in book_ids_by_category.values())
+
         hierarchy_stats = {
             'total_categories': total_categories,
             'root_categories': root_categories_count,

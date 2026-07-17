@@ -611,10 +611,47 @@ class KuzuCategoryService:
         except Exception as e:
             return {}
 
+    async def get_category_book_id_map_for_user(self, user_id: str) -> Dict[str, List[str]]:
+        """Get, in a single query, every (category_id -> [book_id, ...]) mapping for a
+        user's library. Used to compute per-category book counts and a de-duplicated
+        total book count without issuing one query per category (N+1)."""
+        try:
+            query = """
+            MATCH (b:Book)-[:CATEGORIZED_AS]->(c:Category)
+            MATCH (u:User {id: $user_id})-[:HAS_PERSONAL_METADATA]->(b)
+            RETURN c.id, b.id
+            """
+
+            raw_result = safe_execute_kuzu_query(
+                query=query,
+                params={"user_id": user_id},
+                user_id=user_id,
+                operation="get_category_book_id_map_for_user"
+            )
+
+            results = _convert_query_result_to_list(raw_result)
+
+            book_ids_by_category: Dict[str, List[str]] = {}
+            for result in results:
+                category_id = result.get('col_0')
+                book_id = result.get('col_1')
+                if category_id and book_id:
+                    book_ids_by_category.setdefault(category_id, []).append(book_id)
+
+            return book_ids_by_category
+
+        except Exception as e:
+            logger.warning(f"Error building category book id map: {e}")
+            return {}
+
     # Sync wrappers for backward compatibility
     def get_category_book_counts_sync(self) -> Dict[str, int]:
         """Get book counts for all categories (sync version)."""
         return run_async(self.get_category_book_counts())
+
+    def get_category_book_id_map_for_user_sync(self, user_id: str) -> Dict[str, List[str]]:
+        """Get category_id -> [book_id, ...] mapping for a user's library (sync version)."""
+        return run_async(self.get_category_book_id_map_for_user(user_id))
     
     def list_all_categories_sync(self) -> List[Dict[str, Any]]:
         """Get all categories (sync version)."""
