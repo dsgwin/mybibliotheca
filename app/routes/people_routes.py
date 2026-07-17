@@ -118,22 +118,65 @@ def people():
             processed_persons.sort(key=lambda p: getattr(p, 'name', '').lower())
         except Exception as sort_error:
             pass
-        
-        # Show summary of what we found
-        try:
-            total_with_books = sum(1 for p in processed_persons if getattr(p, 'book_count', 0) > 0)
-        except Exception as summary_error:
-            pass
-        
+
         # Get contribution type counts for the accordion
         try:
             contribution_counts = safe_call_sync_method(person_service.get_contribution_type_counts_sync)
         except Exception as counts_error:
             contribution_counts = {}
-        
-        template_data = {'persons': processed_persons, 'contribution_counts': contribution_counts}
-        
-        return render_template('people.html', persons=processed_persons, contribution_counts=contribution_counts)
+
+        # Totals for the stats cards, computed over the whole library before
+        # pagination slices the page down below (mirrors /genres).
+        total_persons_count = len(processed_persons)
+        total_books_count = sum(getattr(p, 'book_count', 0) for p in processed_persons)
+        active_people_count = sum(1 for p in processed_persons if getattr(p, 'book_count', 0) > 0)
+
+        # Pagination: the page used to render every person (and their cover
+        # image, in both the grid and list views) in one response, which was
+        # especially slow to parse/paint on mobile. Paginate like /genres.
+        page = request.args.get('page', 1, type=int)
+        per_page_param = request.args.get('per_page', '12')
+        valid_per_page = [6, 12, 24, 48, 96]
+
+        if per_page_param == 'all':
+            per_page = total_persons_count or 1
+        else:
+            try:
+                per_page = int(per_page_param)
+                if per_page not in valid_per_page:
+                    per_page = 12
+            except (ValueError, TypeError):
+                per_page = 12
+
+        start = (page - 1) * per_page
+        end = start + per_page
+        page_persons = processed_persons[start:end]
+
+        has_prev = page > 1
+        has_next = end < total_persons_count
+        total_pages = (total_persons_count + per_page - 1) // per_page if per_page > 0 else 1
+
+        pagination = {
+            'has_prev': has_prev,
+            'has_next': has_next,
+            'prev_num': page - 1 if has_prev else None,
+            'next_num': page + 1 if has_next else None,
+            'page': page,
+            'pages': total_pages,
+            'total_pages': total_pages,
+            'per_page': per_page,
+            'total': total_persons_count,
+            'total_count': total_persons_count
+        }
+
+        return render_template('people.html',
+                             persons=page_persons,
+                             pagination=pagination,
+                             valid_per_page=valid_per_page,
+                             total_persons_count=total_persons_count,
+                             total_books_count=total_books_count,
+                             active_people_count=active_people_count,
+                             contribution_counts=contribution_counts)
     
     except Exception as e:
         traceback.print_exc()

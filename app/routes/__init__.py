@@ -127,7 +127,14 @@ def stats():
 def people():
     """Compatibility route for main.people - redirect to people.people"""
     from flask import redirect, url_for
-    return redirect(url_for('people.people'))
+    target = url_for('people.people')
+    try:
+        query_bytes = request.query_string or b''
+        if query_bytes:
+            target = f"{target}?{query_bytes.decode('utf-8', 'ignore')}"
+    except Exception:
+        pass
+    return redirect(target)
 
 @main_bp.route('/import_books')
 def import_books():  # legacy endpoint -> library
