@@ -249,8 +249,71 @@
     </div>
 </div>
 
-<link rel="stylesheet" href="{{ url_for('serve_static', filename='css/pages/genres_search.css') }}?v={{ deploy_stamp }}">
+  <style>
+.category-result {
+    transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+.category-result:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+}
+
+.color-indicator {
+    width: 16px;
+    height: 16px;
+    border-radius: 50%;
+    display: inline-block;
+    border: 1px solid #dee2e6;
+}
+
+.aliases .badge {
+    font-size: 0.7em;
+}
+
+code {
+    background-color: #f8f9fa;
+    padding: 2px 4px;
+    border-radius: 3px;
+    font-size: 0.9em;
+}
+  </style>
 
 <script>window.SEARCH_QUERY = '{{ query | safe }}';</script>
-<script src="{{ url_for('serve_static', filename='js/pages/genres_search.js') }}?v={{ deploy_stamp }}"></script>
+  <script>
+// Highlight search terms in results
+document.addEventListener('DOMContentLoaded', function() {
+    const query = window.SEARCH_QUERY;
+    if (query && query.length > 2) {
+        highlightSearchTerms(query.toLowerCase());
+    }
+});
+
+function highlightSearchTerms(searchTerm) {
+    const categoryCards = document.querySelectorAll('.category-result');
+    
+    categoryCards.forEach(card => {
+        const textElements = card.querySelectorAll('h5, p, .badge');
+        
+        textElements.forEach(element => {
+            if (element.textContent.toLowerCase().includes(searchTerm)) {
+                const text = element.innerHTML;
+                const regex = new RegExp(`(${escapeRegExp(searchTerm)})`, 'gi');
+                element.innerHTML = text.replace(regex, '<mark>$1</mark>');
+            }
+        });
+    });
+}
+
+function escapeRegExp(string) {
+    return string.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+}
+
+// Form enhancement
+document.querySelector('form input[name="q"]').addEventListener('keyup', function(e) {
+    if (e.key === 'Enter') {
+        this.form.submit();
+    }
+});
+  </script>
 {% endblock %}

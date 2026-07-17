@@ -3,7 +3,30 @@
 {% block title %}User Details - MyBibliotheca{% endblock %}
 
 {% block content %}
-<link rel="stylesheet" href="{{ url_for('serve_static', filename='css/pages/admin_user_detail.css') }}?v={{ deploy_stamp }}">
+  <style>
+.icon-square {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 24px;
+    height: 24px;
+    border-radius: 6px;
+    font-weight: bold;
+    color: white;
+    margin-right: 6px;
+    font-size: 12px;
+}
+.icon-square.user { background-color: #0d6efd; }
+.icon-square.users { background-color: #6c757d; }
+.icon-square.dash { background-color: #6f42c1; }
+.icon-square.info { background-color: #20c997; }
+.icon-square.actions { background-color: #fd7e14; }
+.icon-square.admin { background-color: #dc3545; }
+.icon-square.active { background-color: #198754; }
+.icon-square.delete { background-color: #dc3545; }
+.icon-square.books { background-color: #0dcaf0; }
+.icon-square.activity { background-color: #ffc107; }
+  </style>
 
 <div class="row">
     <div class="col-12">

@@ -1,7 +1,130 @@
 {% extends "base.html" %}
 {% block title %}Map Fields - Import Books - MyBibliotheca{% endblock %}
 {% block content %}
-<link rel="stylesheet" href="{{ url_for('serve_static', filename='css/pages/import_books_mapping.css') }}?v={{ deploy_stamp }}">
+  <style>
+/* Dark mode enhancements for Import Books Mapping */
+[data-theme="dark"] .text-muted {
+    color: #b0b0b0 !important;
+}
+
+[data-theme="dark"] small.text-muted,
+[data-theme="dark"] .small.text-muted {
+    color: #c0c0c0 !important;
+}
+
+[data-theme="dark"] .form-text {
+    color: #c0c0c0 !important;
+}
+
+[data-theme="dark"] .card {
+    background-color: rgba(40, 40, 40, 0.8) !important;
+    border-color: #404040 !important;
+    color: #e0e0e0 !important;
+}
+
+[data-theme="dark"] .card-header {
+    background-color: rgba(60, 60, 60, 0.8) !important;
+    border-bottom-color: #404040 !important;
+    color: #e0e0e0 !important;
+}
+
+[data-theme="dark"] .card-body {
+    color: #e0e0e0 !important;
+}
+
+[data-theme="dark"] .alert-info {
+    background-color: rgba(13, 110, 253, 0.1) !important;
+    border-color: rgba(13, 110, 253, 0.3) !important;
+    color: #6ea8fe !important;
+}
+
+[data-theme="dark"] .alert-success {
+    background-color: rgba(25, 135, 84, 0.1) !important;
+    border-color: rgba(25, 135, 84, 0.3) !important;
+    color: #51cf66 !important;
+}
+
+[data-theme="dark"] .table {
+    color: #e0e0e0 !important;
+    background-color: transparent !important;
+}
+
+[data-theme="dark"] .table th,
+[data-theme="dark"] .table td {
+    border-color: #404040 !important;
+    color: #e0e0e0 !important;
+    background-color: transparent !important;
+}
+
+[data-theme="dark"] .table-sm th,
+[data-theme="dark"] .table-sm td {
+    color: #e0e0e0 !important;
+    background-color: transparent !important;
+}
+
+[data-theme="dark"] .table thead th {
+    background-color: rgba(60, 60, 60, 0.8) !important;
+    border-color: #404040 !important;
+    color: #f8f9fa !important;
+}
+
+[data-theme="dark"] .table tbody tr {
+    background-color: transparent !important;
+}
+
+[data-theme="dark"] .table tbody tr:nth-of-type(odd) {
+    background-color: rgba(255, 255, 255, 0.05) !important;
+}
+
+[data-theme="dark"] .table tbody tr:hover {
+    background-color: rgba(255, 255, 255, 0.1) !important;
+}
+
+[data-theme="dark"] .table-responsive {
+    border: 1px solid #404040 !important;
+    border-radius: 8px;
+    background-color: transparent !important;
+}
+
+[data-theme="dark"] .form-label {
+    color: #e0e0e0 !important;
+}
+
+[data-theme="dark"] .form-label .text-muted {
+    color: #b0b0b0 !important;
+}
+
+[data-theme="dark"] .form-control, 
+[data-theme="dark"] .form-select {
+    background-color: #495057 !important;
+    border-color: #6c757d !important;
+    color: #fff !important;
+}
+
+[data-theme="dark"] .form-control:focus,
+[data-theme="dark"] .form-select:focus {
+    background-color: #495057 !important;
+    border-color: #86b7fe !important;
+    color: #fff !important;
+    box-shadow: 0 0 0 0.25rem rgba(13, 110, 253, 0.25) !important;
+}
+
+[data-theme="dark"] .form-check-label {
+    color: #e0e0e0 !important;
+}
+
+[data-theme="dark"] .list-unstyled li {
+    color: #e0e0e0 !important;
+}
+
+[data-theme="dark"] .badge {
+    color: #000 !important;
+}
+
+[data-theme="dark"] .text-success {
+    color: #51cf66 !important;
+}
+  </style>
 <div class="container-fluid mt-4">
     <h2>🗺️ Map CSV Fields</h2>
     
@@ -300,5 +423,113 @@
     </div>
 </div>
 
-<script src="{{ url_for('serve_static', filename='js/pages/import_books_mapping.js') }}?v={{ deploy_stamp }}"></script>
+  <script>
+// Handle template application
+function applyTemplate() {
+    const templateSelect = document.getElementById('import_template');
+    const selectedOption = templateSelect.options[templateSelect.selectedIndex];
+    
+    if (selectedOption.value && selectedOption.dataset.mappings) {
+        try {
+            const mappings = JSON.parse(selectedOption.dataset.mappings);
+            
+            // Clear all mappings first, then apply template mappings
+            document.querySelectorAll('.mapping-select').forEach(select => {
+                select.value = '';
+                handleFieldSelection(select);
+            });
+            
+            // Apply mappings from template
+            document.querySelectorAll('.mapping-select').forEach(select => {
+                const csvField = select.dataset.csvField;
+                if (mappings[csvField]) {
+                    select.value = mappings[csvField];
+                    handleFieldSelection(select);
+                }
+            });
+        } catch (e) {
+            console.error('Error applying template:', e);
+        }
+    } else {
+        // If no template selected, clear all mappings
+        document.querySelectorAll('.mapping-select').forEach(select => {
+            select.value = '';
+            handleFieldSelection(select);
+        });
+    }
+}
+
+// Handle dynamic field creation options
+function handleFieldSelection(selectElement) {
+    const createInputs = selectElement.parentElement.querySelector('.create-field-inputs');
+    const value = selectElement.value;
+    
+    if (value === 'create_global_field' || value === 'create_personal_field') {
+        createInputs.style.display = 'block';
+    } else {
+        createInputs.style.display = 'none';
+    }
+}
+
+// Handle save as template checkbox
+document.getElementById('save_as_template').addEventListener('change', function() {
+    const templateNameInput = document.getElementById('template_name');
+    templateNameInput.disabled = !this.checked;
+    if (this.checked) {
+        templateNameInput.focus();
+    } else {
+        templateNameInput.value = '';
+    }
+});
+
+// Add event listeners to all mapping selects
+document.querySelectorAll('.mapping-select').forEach(select => {
+    select.addEventListener('change', function() {
+        handleFieldSelection(this);
+    });
+});
+
+// Auto-apply detected template on page load
+document.addEventListener('DOMContentLoaded', function() {
+    // No longer needed - backend handles template mappings via suggested_mappings
+    // when a template is detected
+});
+
+// Form submission handling
+document.getElementById('mappingForm').addEventListener('submit', function(e) {
+    const submitBtn = this.querySelector('button[type="submit"]');
+    submitBtn.disabled = true;
+    submitBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Starting Import...';
+    
+    // Validate template name if saving as template
+    const saveAsTemplate = document.getElementById('save_as_template').checked;
+    const templateName = document.getElementById('template_name').value.trim();
+    
+    if (saveAsTemplate && !templateName) {
+        e.preventDefault();
+        alert('Please enter a template name or uncheck "Save as template"');
+        submitBtn.disabled = false;
+        submitBtn.innerHTML = '<i class="fas fa-play"></i> Start Import';
+        return;
+    }
+    
+    // Validate that at least one field is mapped
+    const mappingSelects = document.querySelectorAll('.mapping-select');
+    let hasMappings = false;
+    
+    mappingSelects.forEach(select => {
+        if (select.value && select.value !== '') {
+            hasMappings = true;
+        }
+    });
+    
+    if (!hasMappings) {
+        e.preventDefault();
+        alert('Please map at least one CSV column to a book field before starting the import.');
+        submitBtn.disabled = false;
+        submitBtn.innerHTML = '<i class="fas fa-play"></i> Start Import';
+        return;
+    }
+});
+  </script>
 {% endblock %}

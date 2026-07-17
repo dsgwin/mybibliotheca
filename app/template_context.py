@@ -59,14 +59,6 @@ def inject_app_version():
     return {'app_version': get_app_version()}
 
 
-def inject_deploy_stamp():
-    """Make DEPLOY_STAMP available for cache-busting static asset URLs
-    (?v=...) so long-lived immutable Cache-Control on /static doesn't
-    serve a stale CSS/JS file to returning browsers after a redeploy."""
-    from app.utils.simple_cache import DEPLOY_STAMP
-    return {'deploy_stamp': DEPLOY_STAMP}
-
-
 def inject_debug_manager():
     """Make debug manager available in all templates."""
     try:
@@ -290,7 +282,6 @@ def register_context_processors(app):
     """Register all context processors with the Flask app."""
     app.context_processor(inject_debug_manager)
     app.context_processor(inject_app_version)
-    app.context_processor(inject_deploy_stamp)
     app.context_processor(inject_site_config)
     app.context_processor(inject_reading_streak)
     app.context_processor(inject_datetime)

@@ -170,7 +170,68 @@
     </div>
 </div>
 
-<link rel="stylesheet" href="{{ url_for('serve_static', filename='css/pages/migration_wizard.css') }}?v={{ deploy_stamp }}">
+  <style>
+.step-item {
+    text-align: center;
+    position: relative;
+    flex: 1;
+}
+
+.step-item:not(:last-child)::after {
+    content: '';
+    position: absolute;
+    top: 15px;
+    right: -50%;
+    width: 100%;
+    height: 2px;
+    background-color: #dee2e6;
+    z-index: 1;
+}
+
+.step-item.active:not(:last-child)::after {
+    background-color: #0d6efd;
+}
+
+.step-number {
+    width: 30px;
+    height: 30px;
+    border-radius: 50%;
+    background-color: #dee2e6;
+    color: #6c757d;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin: 0 auto 8px;
+    font-weight: bold;
+    position: relative;
+    z-index: 2;
+}
+
+.step-item.active .step-number {
+    background-color: #0d6efd;
+    color: white;
+}
+
+.step-title {
+    font-size: 0.875rem;
+    color: #6c757d;
+}
+
+.step-item.active .step-title {
+    color: #0d6efd;
+    font-weight: 600;
+}
+
+.database-card {
+    border: 2px solid transparent;
+    transition: border-color 0.2s;
+}
+
+.database-card:has(.form-check-input:checked) {
+    border-color: #0d6efd;
+    background-color: #f8f9ff;
+}
+  </style>
 
 <script>
   window.MIGRATION_WIZARD_CONFIG = {
@@ -178,6 +239,28 @@
     csrfToken: '{{ csrf_token() }}',
     indexUrl: '{{ url_for("main.index") }}'
   };
-</script>
-<script src="{{ url_for('serve_static', filename='js/pages/migration_wizard.js') }}?v={{ deploy_stamp }}"></script>
+
+function dismissMigration() {
+    if (confirm('Are you sure you want to dismiss the migration? You can always access it later from the admin panel.')) {
+        fetch(window.MIGRATION_WIZARD_CONFIG.dismissMigrationUrl, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRFToken': window.MIGRATION_WIZARD_CONFIG.csrfToken
+            }
+        }).then(() => {
+            window.location.href = window.MIGRATION_WIZARD_CONFIG.indexUrl;
+        });
+    }
+}
+
+// Validate form
+document.getElementById('migrationForm').addEventListener('submit', function(e) {
+    const checked = document.querySelectorAll('input[name="selected_databases"]:checked');
+    if (checked.length === 0) {
+        e.preventDefault();
+        alert('Please select at least one database to migrate.');
+    }
+});
+  </script>
 {% endblock %}

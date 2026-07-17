@@ -2,7 +2,54 @@
 {% block title %}Manage Locations - MyBibliotheca{% endblock %}
 
 {% block content %}
-<link rel="stylesheet" href="{{ url_for('serve_static', filename='css/pages/locations_manage.css') }}?v={{ deploy_stamp }}">
+  <style>
+  :root {
+    --primary-brown: #8B4513;
+    --light-brown: #D2B48C;
+    --cream: #F5F5DC;
+    --warm-white: #FEFEFE;
+    --gold: #DAA520;
+    --shadow: rgba(0,0,0,0.1);
+    --hover-shadow: rgba(0,0,0,0.2);
+  }
+
+  .card {
+    transition: transform 0.2s ease, box-shadow 0.2s ease;
+  }
+
+  .card:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 8px 25px var(--hover-shadow);
+  }
+
+  /* Dark mode styling for About Locations box */
+  [data-theme="dark"] .card.bg-light {
+    background-color: rgba(40, 40, 40, 0.8) !important;
+    border-color: #404040 !important;
+    color: #e0e0e0 !important;
+  }
+
+  [data-theme="dark"] .card.bg-light .card-header {
+    background-color: rgba(60, 60, 60, 0.8) !important;
+    border-bottom-color: #404040 !important;
+    color: #e0e0e0 !important;
+  }
+
+  [data-theme="dark"] .card.bg-light .card-body {
+    color: #e0e0e0 !important;
+  }
+
+  [data-theme="dark"] .card.bg-light .card-body p,
+  [data-theme="dark"] .card.bg-light .card-body li {
+    color: #e0e0e0 !important;
+  }
+
+  [data-theme="dark"] .card.bg-light .alert-info {
+    background-color: rgba(13, 110, 253, 0.1) !important;
+    border-color: rgba(13, 110, 253, 0.3) !important;
+    color: #6ea8fe !important;
+  }
+  </style>
 
 <div class="container mt-4">
     <div class="row">
