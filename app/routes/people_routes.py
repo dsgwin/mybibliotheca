@@ -60,14 +60,20 @@ def people():
             return result
         
         all_persons = safe_call_sync_method(book_service.list_all_persons_sync, str(current_user.id))
-        
+
         # Ensure we have a list
         if not isinstance(all_persons, list):
             all_persons = []
-        
+
+        # Single query: person_id -> [book, ...] (global, across the whole
+        # library) instead of one get_books_by_person() call per person.
+        books_by_person = safe_call_sync_method(person_service.get_books_by_all_persons_sync)
+        if not isinstance(books_by_person, dict):
+            books_by_person = {}
+
         # Convert dictionaries to objects for template compatibility
         processed_persons = []
-        
+
         # Add book counts and contributions for each person
         for i, person in enumerate(all_persons):
             # Convert dictionary to object if needed
@@ -76,13 +82,13 @@ def people():
                 person_obj = SimpleNamespace(**person)
             else:
                 person_obj = person
-            
+
             try:
                 # Get book count and contributions for this person
                 person_id = getattr(person_obj, 'id', None)
                 if person_id:
                     # Use global book count (all books authored by this person)
-                    all_books_by_person = safe_call_sync_method(person_service.get_books_by_person_sync, person_id)
+                    all_books_by_person = books_by_person.get(person_id)
                     if all_books_by_person:
                         person_obj.book_count = len(all_books_by_person)
                         # For the template, organize by relationship type
@@ -99,9 +105,9 @@ def people():
                 else:
                     person_obj.book_count = 0
                     person_obj.contributions = {}
-                
+
                 processed_persons.append(person_obj)
-                
+
             except Exception as person_error:
                 person_obj.book_count = 0
                 person_obj.contributions = {}

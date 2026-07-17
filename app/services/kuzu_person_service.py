@@ -322,6 +322,47 @@ class KuzuPersonService:
             traceback.print_exc()
             return []
     
+    async def get_books_by_all_persons(self) -> Dict[str, List[Dict[str, Any]]]:
+        """Get, in a single query, every person_id -> [book, ...] mapping across
+        the whole library. Used to avoid one get_books_by_person() query per
+        person when rendering the people list."""
+        try:
+            query = """
+            MATCH (p:Person)-[r:AUTHORED]->(b:Book)
+            RETURN p.id, b, COALESCE(r.role, 'authored')
+            ORDER BY b.title ASC
+            """
+
+            raw_result = safe_execute_kuzu_query(
+                query=query,
+                params={},
+                user_id=self.user_id,
+                operation="get_books_by_all_persons"
+            )
+
+            results = _convert_query_result_to_list(raw_result)
+
+            books_by_person: Dict[str, List[Dict[str, Any]]] = {}
+            for result in results:
+                person_id = result.get('col_0')
+                book_node = result.get('col_1')
+                relationship_type = result.get('col_2', 'authored')
+                if not person_id or not book_node:
+                    continue
+
+                book_data = dict(book_node)
+                book_data['relationship_type'] = relationship_type
+                if 'id' in book_data:
+                    book_data['uid'] = book_data['id']
+
+                books_by_person.setdefault(person_id, []).append(book_data)
+
+            return books_by_person
+
+        except Exception as e:
+            logger.warning(f"Error building books-by-person map: {e}")
+            return {}
+
     async def get_contribution_type_counts(self) -> Dict[str, int]:
         """Get counts of people by contribution type."""
         try:
@@ -378,6 +419,10 @@ class KuzuPersonService:
     def get_books_by_person_sync(self, person_id: str) -> List[Dict[str, Any]]:
         """Get all books associated with a person (sync version)."""
         return run_async(self.get_books_by_person(person_id))
+
+    def get_books_by_all_persons_sync(self) -> Dict[str, List[Dict[str, Any]]]:
+        """Get person_id -> [book, ...] mapping across the whole library (sync version)."""
+        return run_async(self.get_books_by_all_persons())
     
     def get_contribution_type_counts_sync(self) -> Dict[str, int]:
         """Get counts of people by contribution type (sync version)."""
