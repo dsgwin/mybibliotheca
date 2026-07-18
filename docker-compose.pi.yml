@@ -21,11 +21,18 @@ services:
 
       SITE_NAME: ${SITE_NAME:-MyBibliotheca}
       TIMEZONE: ${TIMEZONE:-UTC}
+      # CRITICAL: Single WORKER PROCESS (one kuzu.Database per process). Do
+      # not raise above 1 - see the gunicorn CMD in Dockerfile.pi for the
+      # (multi-threaded) request-handling model this pairs with.
       WORKERS: "1"
       LOG_LEVEL: ${LOG_LEVEL:-ERROR}
       MYBIBLIOTHECA_VERBOSE_INIT: ${MYBIBLIOTHECA_VERBOSE_INIT:-false}
 
       AUTO_MIGRATE: "false"
+
+      # Pause new KuzuDB connections while a backup is being taken, so the
+      # backup zip can't capture a mid-write, inconsistent snapshot.
+      KUZU_BACKUP_QUIESCE: "true"
 
       # Cap KuzuDB max_db_size to prevent mmap failure on ARM.
       # Raise to 8 or 16 if you have a Pi with 8 GB RAM and a large library.

@@ -23,8 +23,15 @@ services:
       - READING_STREAK_OFFSET=0
       - FLASK_DEBUG=true
       
-      # CRITICAL: Single worker for KuzuDB compatibility
+      # CRITICAL: Single WORKER PROCESS (one kuzu.Database per process).
+      # Multiple threads within that one process are fine and expected
+      # (see the gunicorn CMD in Dockerfile) - each thread gets its own
+      # Connection via SafeKuzuManager, which KuzuDB's own concurrency
+      # model supports. Do not raise WORKERS above 1.
       - WORKERS=1
+      # Pause new KuzuDB connections while a backup is being taken, so the
+      # backup zip can't capture a mid-write, inconsistent snapshot.
+      - KUZU_BACKUP_QUIESCE=true
 
       # Metadata provider keys (value comes from the gitignored .env file)
       - GOOGLE_BOOKS_API_KEY=${GOOGLE_BOOKS_API_KEY}

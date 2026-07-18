@@ -11,6 +11,8 @@ This package contains decomposed service classes for better maintainability:
 - KuzuServiceFacade: Backward compatibility facade
 """
 
+import threading
+
 try:
     from .kuzu_async_helper import KuzuAsyncHelper, run_async
     from .kuzu_service_facade import KuzuServiceFacade
@@ -37,11 +39,22 @@ try:
     _opds_probe_service = None
     _opds_sync_service = None
     
+    # Guards lazy singleton initialization and the one-time migration flag
+    # below. Needed now that gunicorn runs multiple threads per process:
+    # without it, two threads racing through the first request after boot
+    # could both see the "not yet initialized" state and, worse, both run
+    # the schema migration concurrently.
+    _INIT_LOCK = threading.Lock()
+
     # Module-level flag to ensure migration executes only once lazily
     _OWNS_MIGRATION_RAN = False
     def _run_migration_once():
         global _OWNS_MIGRATION_RAN
-        if not _OWNS_MIGRATION_RAN:
+        if _OWNS_MIGRATION_RAN:
+            return
+        with _INIT_LOCK:
+            if _OWNS_MIGRATION_RAN:
+                return
             try:
                 from .owns_migration_service import auto_run_migration_if_needed
                 auto_run_migration_if_needed()
@@ -54,54 +67,68 @@ try:
         global _book_service
         if _book_service is None:
             _run_migration_once()
-            _book_service = KuzuServiceFacade()
+            with _INIT_LOCK:
+                if _book_service is None:
+                    _book_service = KuzuServiceFacade()
         return _book_service
-    
+
     def _get_user_service():
         """Get user service instance with lazy initialization."""
         global _user_service
         if _user_service is None:
             _run_migration_once()
-            _user_service = KuzuUserService()
+            with _INIT_LOCK:
+                if _user_service is None:
+                    _user_service = KuzuUserService()
         return _user_service
-    
+
     def _get_custom_field_service():
         """Get custom field service instance with lazy initialization."""
         global _custom_field_service
         if _custom_field_service is None:
             _run_migration_once()
-            _custom_field_service = KuzuCustomFieldService()
+            with _INIT_LOCK:
+                if _custom_field_service is None:
+                    _custom_field_service = KuzuCustomFieldService()
         return _custom_field_service
-    
+
     def _get_import_mapping_service():
         """Get import mapping service instance with lazy initialization."""
         global _import_mapping_service
         if _import_mapping_service is None:
             _run_migration_once()
-            _import_mapping_service = KuzuImportMappingService()
+            with _INIT_LOCK:
+                if _import_mapping_service is None:
+                    _import_mapping_service = KuzuImportMappingService()
         return _import_mapping_service
-    
+
     def _get_person_service():
         """Get person service instance with lazy initialization."""
         global _person_service
         if _person_service is None:
             _run_migration_once()
-            _person_service = KuzuPersonService()
+            with _INIT_LOCK:
+                if _person_service is None:
+                    _person_service = KuzuPersonService()
         return _person_service
-    
+
     def _get_reading_log_service():
         """Get reading log service instance with lazy initialization."""
         global _reading_log_service
         if _reading_log_service is None:
             _run_migration_once()
-            _reading_log_service = KuzuReadingLogService()
+            with _INIT_LOCK:
+                if _reading_log_service is None:
+                    _reading_log_service = KuzuReadingLogService()
         return _reading_log_service
 
     def _get_opds_probe_service():
         """Lazy OPDS probe service."""
         global _opds_probe_service
         if _opds_probe_service is None:
-            _opds_probe_service = OPDSProbeService()
+            with _INIT_LOCK:
+                if _opds_probe_service is None:
+                    _opds_probe_service = OPDSProbeService()
         return _opds_probe_service
 
     def _get_opds_sync_service():
@@ -109,7 +136,9 @@ try:
         global _opds_sync_service
         if _opds_sync_service is None:
             probe = _get_opds_probe_service()
-            _opds_sync_service = OPDSSyncService(probe_service=probe)
+            with _INIT_LOCK:
+                if _opds_sync_service is None:
+                    _opds_sync_service = OPDSSyncService(probe_service=probe)
         return _opds_sync_service
     
     # Create property-like access using classes

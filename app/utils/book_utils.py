@@ -1,7 +1,14 @@
 from collections import OrderedDict
+import threading as _threading
 import time as _time
 import os as _os_cover_debug
 from typing import Dict, List, Optional, Tuple
+
+# Guards mutations of the module-level caches below. These are hit on every
+# cover/metadata lookup, so with multiple gunicorn threads now able to run
+# this code concurrently, unprotected dict/OrderedDict mutation (including
+# OrderedDict.move_to_end/popitem) is a real race, not just a startup one.
+_CACHE_LOCK = _threading.Lock()
 
 _PROVIDER_META_CACHE: Dict[str, Tuple[dict, float]] = {}
 _CACHE_TTL_SECONDS = 300  # 5 minutes; cover metadata rarely changes
@@ -22,25 +29,28 @@ _COVER_VERBOSE = (
 )
 
 def _cache_get(key):
-    rec = _PROVIDER_META_CACHE.get(key)
-    if not rec:
-        return None
-    data, ts = rec
-    import time as _t
-    if _t.time() - ts > _CACHE_TTL_SECONDS:
-        try:
-            del _PROVIDER_META_CACHE[key]
-        except Exception:
-            pass
-        return None
-    return data
+    with _CACHE_LOCK:
+        rec = _PROVIDER_META_CACHE.get(key)
+        if not rec:
+            return None
+        data, ts = rec
+        import time as _t
+        if _t.time() - ts > _CACHE_TTL_SECONDS:
+            try:
+                del _PROVIDER_META_CACHE[key]
+            except Exception:
+                pass
+            return None
+        return data
 
 def _cache_set(key, data):
     import time as _t
-    _PROVIDER_META_CACHE[key] = (data, _t.time())
+    with _CACHE_LOCK:
+        _PROVIDER_META_CACHE[key] = (data, _t.time())
 
 
 def _purge_ordered_dict(store: OrderedDict, ttl: int, max_entries: int) -> None:
+    # Caller must hold _CACHE_LOCK.
     now = _time.time()
     if ttl > 0:
         for key, (ts, _) in list(store.items()):
@@ -62,25 +72,27 @@ def _normalized_cover_key(isbn: Optional[str], title: Optional[str], author: Opt
 
 
 def _best_cache_get(cache_key: str) -> Optional[dict]:
-    entry = _BEST_COVER_CACHE.get(cache_key)
-    if not entry:
-        return None
-    ts, payload = entry
-    if _time.time() - ts > _BEST_CACHE_TTL_SECONDS:
-        _BEST_COVER_CACHE.pop(cache_key, None)
-        return None
-    try:
-        _BEST_COVER_CACHE.move_to_end(cache_key)
-    except Exception:
-        pass
-    return payload
+    with _CACHE_LOCK:
+        entry = _BEST_COVER_CACHE.get(cache_key)
+        if not entry:
+            return None
+        ts, payload = entry
+        if _time.time() - ts > _BEST_CACHE_TTL_SECONDS:
+            _BEST_COVER_CACHE.pop(cache_key, None)
+            return None
+        try:
+            _BEST_COVER_CACHE.move_to_end(cache_key)
+        except Exception:
+            pass
+        return payload
 
 
 def _best_cache_set(cache_key: str, value: dict) -> None:
     if _BEST_CACHE_MAX_ENTRIES <= 0:
         return
-    _BEST_COVER_CACHE[cache_key] = (_time.time(), value)
-    _purge_ordered_dict(_BEST_COVER_CACHE, _BEST_CACHE_TTL_SECONDS, _BEST_CACHE_MAX_ENTRIES)
+    with _CACHE_LOCK:
+        _BEST_COVER_CACHE[cache_key] = (_time.time(), value)
+        _purge_ordered_dict(_BEST_COVER_CACHE, _BEST_CACHE_TTL_SECONDS, _BEST_CACHE_MAX_ENTRIES)
 
 
 def _candidate_cache_key(isbn: Optional[str], title: Optional[str], author: Optional[str]) -> str:
@@ -91,26 +103,28 @@ def _candidate_cache_get(isbn: Optional[str], title: Optional[str], author: Opti
     if _CANDIDATE_CACHE_MAX_ENTRIES <= 0:
         return None
     key = _candidate_cache_key(isbn, title, author)
-    entry = _COVER_CANDIDATE_CACHE.get(key)
-    if not entry:
-        return None
-    ts, payload = entry
-    if _time.time() - ts > _CANDIDATE_CACHE_TTL_SECONDS:
-        _COVER_CANDIDATE_CACHE.pop(key, None)
-        return None
-    try:
-        _COVER_CANDIDATE_CACHE.move_to_end(key)
-    except Exception:
-        pass
-    return [candidate.copy() for candidate in payload]
+    with _CACHE_LOCK:
+        entry = _COVER_CANDIDATE_CACHE.get(key)
+        if not entry:
+            return None
+        ts, payload = entry
+        if _time.time() - ts > _CANDIDATE_CACHE_TTL_SECONDS:
+            _COVER_CANDIDATE_CACHE.pop(key, None)
+            return None
+        try:
+            _COVER_CANDIDATE_CACHE.move_to_end(key)
+        except Exception:
+            pass
+        return [candidate.copy() for candidate in payload]
 
 
 def _candidate_cache_set(isbn: Optional[str], title: Optional[str], author: Optional[str], candidates: List[dict]) -> None:
     if _CANDIDATE_CACHE_MAX_ENTRIES <= 0:
         return
     key = _candidate_cache_key(isbn, title, author)
-    _COVER_CANDIDATE_CACHE[key] = (_time.time(), [candidate.copy() for candidate in candidates])
-    _purge_ordered_dict(_COVER_CANDIDATE_CACHE, _CANDIDATE_CACHE_TTL_SECONDS, _CANDIDATE_CACHE_MAX_ENTRIES)
+    with _CACHE_LOCK:
+        _COVER_CANDIDATE_CACHE[key] = (_time.time(), [candidate.copy() for candidate in candidates])
+        _purge_ordered_dict(_COVER_CANDIDATE_CACHE, _CANDIDATE_CACHE_TTL_SECONDS, _CANDIDATE_CACHE_MAX_ENTRIES)
 
 # --- Google Cover Utilities ---
 _GOOGLE_SIZE_ORDER = ['extraLarge','large','medium','small','thumbnail','smallThumbnail']

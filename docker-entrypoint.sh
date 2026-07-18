@@ -102,8 +102,8 @@ echo "🔧 KuzuDB diagnostics:"
 echo "  - Directory permissions: $(ls -ld $KUZU_DB_PATH 2>/dev/null || echo 'N/A')"
 echo "  - Available disk space: $(df -h $KUZU_DB_PATH 2>/dev/null | tail -1 || echo 'N/A')"
 
-# Warn about single worker requirement
-echo "⚠️  NOTE: Running with single worker (WORKERS=1) due to KuzuDB concurrency limitations"
+# Note the process/thread model
+echo "ℹ️  NOTE: Single worker PROCESS (WORKERS=1, one kuzu.Database per process); multiple gunicorn threads handle requests concurrently within it"
 echo "📊 KuzuDB path: $KUZU_DB_PATH"
 
 # Check for SQLite migration if enabled

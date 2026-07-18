@@ -100,6 +100,10 @@ EXPOSE 5054
 
 ENTRYPOINT ["docker-entrypoint.sh"]
 
+# CRITICAL: Single WORKER PROCESS (-w 1) - KuzuDB allows exactly one process
+# to hold a given database file open. Multiple THREADS within that one
+# process are safe (see docs.kuzudb.com/concurrency and Dockerfile for the
+# full explanation). Do not raise -w above 1.
 ENV WORKERS=1
 ARG ACCESS_LOGS="false"
-CMD ["/bin/sh", "-c", "if [ \"$ACCESS_LOGS\" = \"true\" ]; then exec gunicorn --worker-class sync --no-sendfile -w 1 --threads 1 -b 0.0.0.0:5054 --timeout 300 --graceful-timeout 300 --error-logfile - --access-logfile - --max-requests 1000 --max-requests-jitter 100 run:app; else exec gunicorn --worker-class sync --no-sendfile -w 1 --threads 1 -b 0.0.0.0:5054 --timeout 300 --graceful-timeout 300 --error-logfile - --max-requests 1000 --max-requests-jitter 100 run:app; fi"]
+CMD ["/bin/sh", "-c", "if [ \"$ACCESS_LOGS\" = \"true\" ]; then exec gunicorn --worker-class gthread --no-sendfile -w 1 --threads 8 -b 0.0.0.0:5054 --timeout 300 --graceful-timeout 300 --error-logfile - --access-logfile - --max-requests 1000 --max-requests-jitter 100 run:app; else exec gunicorn --worker-class gthread --no-sendfile -w 1 --threads 8 -b 0.0.0.0:5054 --timeout 300 --graceful-timeout 300 --error-logfile - --max-requests 1000 --max-requests-jitter 100 run:app; fi"]

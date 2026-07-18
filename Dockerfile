@@ -95,12 +95,22 @@ EXPOSE 5054
 ENTRYPOINT ["docker-entrypoint.sh"]
 
 # Start the app with Gunicorn in production mode
-# CRITICAL: Use single worker and single thread for KuzuDB compatibility (no concurrent access)
+# CRITICAL: Single WORKER PROCESS (-w 1) - KuzuDB allows exactly one process
+# to hold a given database file open (one kuzu.Database object per file).
+# Multiple THREADS within that one process are safe: KuzuDB's own
+# concurrency model explicitly supports one Database object shared by many
+# threads, each using its own Connection (see docs.kuzudb.com/concurrency),
+# and SafeKuzuManager already hands out a fresh Connection per operation.
+# Do not raise -w above 1; do not revert --worker-class/--threads without
+# understanding this distinction.
 ENV WORKERS=1
 # Set timeout to 300 seconds (5 minutes) to handle bulk imports with rate limiting
 # Disable sendfile to prevent occasional deadlocks on Docker for macOS/overlay FS
-# Use sync worker class and force single threaded operation for KuzuDB
-# Preload application to avoid multiple KuzuDB initialization attempts
+# gthread worker class + multiple threads: the old `sync` worker class
+# cannot serve more than one request at a time regardless of --threads (it
+# fully closes each connection before accepting the next), which serialized
+# every request - including static assets - behind whichever one happened
+# to be in flight. gthread actually dispatches requests to a thread pool.
 ARG ACCESS_LOGS="false"
 # Default: disable access logs to keep container output quiet; errors still go to stderr
-CMD ["/bin/sh", "-c", "if [ \"$ACCESS_LOGS\" = \"true\" ]; then exec gunicorn --worker-class sync --no-sendfile -w 1 --threads 1 -b 0.0.0.0:5054 --timeout 300 --graceful-timeout 300 --error-logfile - --access-logfile - --max-requests 1000 --max-requests-jitter 100 run:app; else exec gunicorn --worker-class sync --no-sendfile -w 1 --threads 1 -b 0.0.0.0:5054 --timeout 300 --graceful-timeout 300 --error-logfile - --max-requests 1000 --max-requests-jitter 100 run:app; fi"]
+CMD ["/bin/sh", "-c", "if [ \"$ACCESS_LOGS\" = \"true\" ]; then exec gunicorn --worker-class gthread --no-sendfile -w 1 --threads 8 -b 0.0.0.0:5054 --timeout 300 --graceful-timeout 300 --error-logfile - --access-logfile - --max-requests 1000 --max-requests-jitter 100 run:app; else exec gunicorn --worker-class gthread --no-sendfile -w 1 --threads 8 -b 0.0.0.0:5054 --timeout 300 --graceful-timeout 300 --error-logfile - --max-requests 1000 --max-requests-jitter 100 run:app; fi"]

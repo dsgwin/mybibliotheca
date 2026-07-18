@@ -49,6 +49,11 @@ except Exception:
 _VERBOSE_INIT = os.getenv('MYBIBLIOTHECA_VERBOSE_INIT', 'false').lower() in ('1', 'true', 'on', 'yes') or \
                 os.getenv('KUZU_DEBUG', 'false').lower() in ('1', 'true', 'on', 'yes')
 
+# Matches Cypher write clauses (CREATE/MERGE/SET/DELETE/DETACH/DROP/ALTER/COPY)
+# as whole words, case-insensitively. Used to decide which queries need to be
+# serialized via SafeKuzuManager._write_lock - see its definition for why.
+_WRITE_QUERY_RE = re.compile(r'\b(CREATE|MERGE|SET|DELETE|DETACH|DROP|ALTER|COPY)\b', re.IGNORECASE)
+
 
 class SafeKuzuManager:
     """
@@ -72,6 +77,13 @@ class SafeKuzuManager:
 
         # Thread safety controls
         self._lock = threading.RLock()  # Reentrant lock for nested calls
+        # KuzuDB only allows one write transaction active at a time system-wide
+        # (confirmed empirically: a second concurrent write raises "Cannot start
+        # a new write transaction in the system" rather than queuing/retrying).
+        # Concurrent Connection objects from one Database are fine for reads,
+        # so this only serializes queries execute_query() detects as writes -
+        # see _WRITE_QUERY_RE below.
+        self._write_lock = threading.Lock()
         self._database: Optional[kuzu.Database] = None
         self._is_initialized = False
         self._fatal_init_error: Optional[Exception] = None  # cached first fatal init error
@@ -618,8 +630,33 @@ class SafeKuzuManager:
                 except Exception as e:
                     logger.error(f"[THREAD-{thread_info['thread_id']}:{thread_info['thread_name']}] "
                                 f"Error closing connection #{connection_id}: {e}")
-    
-    def execute_query(self, query: str, params: Optional[Dict[str, Any]] = None, 
+
+    def _execute_write_with_lock(self, conn: 'kuzu.Connection', query: str,
+                                  params: Dict[str, Any], operation: str, max_retries: int = 3) -> Any:
+        """Run a write query serialized against every other write query in this
+        process. KuzuDB rejects (rather than queues) a second concurrent write
+        transaction, so writes must not overlap. Reads are unaffected - they
+        don't take this lock. Retries a few times on the specific "only one
+        write transaction" error as a safety net in case something outside
+        execute_query() ever starts a write without going through this lock."""
+        last_error: Optional[Exception] = None
+        for attempt in range(max_retries):
+            with self._write_lock:
+                try:
+                    return conn.execute(query, params)
+                except Exception as e:
+                    last_error = e
+                    if "only one write transaction" not in str(e).lower():
+                        raise
+            # Outside the lock: brief backoff before retrying, so whichever
+            # write is actually holding KuzuDB's internal write slot has a
+            # chance to finish.
+            logger.warning(f"[KUZU] Write transaction conflict on operation '{operation}' "
+                          f"(attempt {attempt + 1}/{max_retries}); retrying")
+            time.sleep(0.05 * (attempt + 1))
+        raise last_error
+
+    def execute_query(self, query: str, params: Optional[Dict[str, Any]] = None,
                      user_id: Optional[str] = None, operation: str = "query") -> Any:
         """
         Execute a query with automatic connection management.
@@ -726,9 +763,13 @@ class SafeKuzuManager:
             for k, v in list(sanitized_params.items()):
                 if _looks_like_datetime_key(k) and isinstance(v, str) and v.strip() == '':
                     sanitized_params[k] = None
+        is_write = bool(_WRITE_QUERY_RE.search(query))
         with self.get_connection(user_id=user_id, operation=operation) as conn:
             t0 = time.time()
-            result = conn.execute(query, sanitized_params or params or {})
+            if is_write:
+                result = self._execute_write_with_lock(conn, query, sanitized_params or params or {}, operation)
+            else:
+                result = conn.execute(query, sanitized_params or params or {})
             dt = time.time() - t0
             # Log completion if query logging is enabled or the query is slow
             if _QUERY_LOG_ENABLED or (dt * 1000) >= _SLOW_QUERY_MS:
