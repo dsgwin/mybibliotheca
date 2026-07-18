@@ -128,7 +128,17 @@ def people():
         # Totals for the stats cards, computed over the whole library before
         # pagination slices the page down below (mirrors /genres).
         total_persons_count = len(processed_persons)
-        total_books_count = sum(getattr(p, 'book_count', 0) for p in processed_persons)
+        # Distinct books, not sum(book_count) - a book with multiple
+        # contributors (e.g. co-authors, or one person as both author and
+        # narrator) would otherwise be counted once per person and inflate
+        # the total above the library's actual book count.
+        distinct_book_ids = {
+            book.get('id') or book.get('uid')
+            for books in books_by_person.values()
+            for book in books
+            if book.get('id') or book.get('uid')
+        }
+        total_books_count = len(distinct_book_ids)
         active_people_count = sum(1 for p in processed_persons if getattr(p, 'book_count', 0) > 0)
 
         # Pagination: the page used to render every person (and their cover

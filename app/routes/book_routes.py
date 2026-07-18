@@ -2157,11 +2157,16 @@ def library():
             )
         ]
     
-    if category_filter:
+    if category_filter == '__uncategorized__':
         filtered_books = [
-            book for book in filtered_books 
+            book for book in filtered_books
+            if not (book.get('categories') if isinstance(book, dict) else getattr(book, 'categories', None))
+        ]
+    elif category_filter:
+        filtered_books = [
+            book for book in filtered_books
             if (book.get('categories') if isinstance(book, dict) else getattr(book, 'categories', None)) and any(
-                category_filter.lower() in (cat.get('name', '') if isinstance(cat, dict) else getattr(cat, 'name', '')).lower() 
+                category_filter.lower() in (cat.get('name', '') if isinstance(cat, dict) else getattr(cat, 'name', '')).lower()
                 for cat in (book.get('categories', []) if isinstance(book, dict) else getattr(book, 'categories', []))
             )
         ]
