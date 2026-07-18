@@ -363,6 +363,36 @@ class KuzuPersonService:
             logger.warning(f"Error building books-by-person map: {e}")
             return {}
 
+    async def get_books_without_contributors_count(self) -> int:
+        """Count of Book nodes with zero AUTHORED relationships from any Person.
+
+        Mirrors KuzuCategoryService.get_uncategorized_book_count - a book
+        with no credited author/contributor is invisible to the person-based
+        "Total Books" count on /people (it's counted per-person via AUTHORED,
+        so a book nobody is credited on is never counted), which otherwise
+        reads as a confusing mismatch against the library's own total."""
+        try:
+            query = """
+            MATCH (b:Book)
+            OPTIONAL MATCH (p:Person)-[:AUTHORED]->(b)
+            WITH b, COUNT(p) AS contributor_count
+            WHERE contributor_count = 0
+            RETURN COUNT(b)
+            """
+            raw_result = safe_execute_kuzu_query(
+                query=query,
+                params={},
+                user_id=self.user_id,
+                operation="get_books_without_contributors_count"
+            )
+            results = _convert_query_result_to_list(raw_result)
+            if results:
+                val = results[0].get('result') if 'result' in results[0] else results[0].get('col_0')
+                return int(val) if isinstance(val, (int, float, str)) else 0
+        except Exception as e:
+            logger.warning(f"Error counting books without contributors: {e}")
+        return 0
+
     async def get_contribution_type_counts(self) -> Dict[str, int]:
         """Get counts of people by contribution type."""
         try:
@@ -423,7 +453,11 @@ class KuzuPersonService:
     def get_books_by_all_persons_sync(self) -> Dict[str, List[Dict[str, Any]]]:
         """Get person_id -> [book, ...] mapping across the whole library (sync version)."""
         return run_async(self.get_books_by_all_persons())
-    
+
+    def get_books_without_contributors_count_sync(self) -> int:
+        """Count of Book nodes with zero credited authors/contributors (sync version)."""
+        return run_async(self.get_books_without_contributors_count())
+
     def get_contribution_type_counts_sync(self) -> Dict[str, int]:
         """Get counts of people by contribution type (sync version)."""
         return run_async(self.get_contribution_type_counts())

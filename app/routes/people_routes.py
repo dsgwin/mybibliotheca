@@ -139,6 +139,13 @@ def people():
             if book.get('id') or book.get('uid')
         }
         total_books_count = len(distinct_book_ids)
+        # Books with zero credited authors/contributors are invisible to the
+        # count above (it's derived from AUTHORED relationships) - mirrors
+        # /genres' "+N uncategorized" annotation for the same reason.
+        try:
+            books_without_contributors_count = safe_call_sync_method(person_service.get_books_without_contributors_count_sync)
+        except Exception:
+            books_without_contributors_count = 0
         active_people_count = sum(1 for p in processed_persons if getattr(p, 'book_count', 0) > 0)
 
         # Pagination: the page used to render every person (and their cover
@@ -185,6 +192,7 @@ def people():
                              valid_per_page=valid_per_page,
                              total_persons_count=total_persons_count,
                              total_books_count=total_books_count,
+                             books_without_contributors_count=books_without_contributors_count,
                              active_people_count=active_people_count,
                              contribution_counts=contribution_counts)
     

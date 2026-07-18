@@ -71,6 +71,9 @@
                         <div class="card-body text-center">
                             <h3 class="stat-number">{{ total_books_count }}</h3>
                             <p class="stat-label mb-0">Total Books</p>
+                            {% if books_without_contributors_count > 0 %}
+                            <p class="mb-0 small text-muted">+{{ books_without_contributors_count }} without an author</p>
+                            {% endif %}
                         </div>
                     </div>
                 </div>
