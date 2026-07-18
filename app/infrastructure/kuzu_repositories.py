@@ -1038,23 +1038,49 @@ class KuzuBookRepository:
             logger.error(f"❌ Failed to ensure person exists: {e}")
             return None
     
+    def _coerce_raw_categories_to_list(self, raw_categories: Any) -> list[str]:
+        """Coerce raw_categories (str or list) into a clean list of strings."""
+        if isinstance(raw_categories, str):
+            return [cat.strip() for cat in raw_categories.split(',') if cat.strip()]
+        elif isinstance(raw_categories, list):
+            return [str(cat).strip() for cat in raw_categories if str(cat).strip()]
+        else:
+            logger.warning(f"⚠️ Unknown raw_categories format: {type(raw_categories)}")
+            return []
+
+    async def _create_category_relationships_unfiltered(self, book_id: str, raw_categories: Any):
+        """Create category relationships from raw category data as-is, with no
+        canonical-genre allowlist filtering.
+
+        Used for explicit user category assignment (e.g. editing a book's
+        genres directly), where the user typed or picked the name themselves
+        via a "type to search existing genres or add new ones" UI - unlike
+        automated/imported metadata, there's nothing here to normalize away,
+        and silently dropping a name the user deliberately chose (because it
+        isn't in the canonical allowlist) is confusing: the category node
+        gets created, but the book is never actually linked to it, with no
+        error shown.
+        """
+        raw_list = self._coerce_raw_categories_to_list(raw_categories)
+        if not raw_list:
+            return
+        for category_name in raw_list[:5]:
+            await self._create_category_relationship_by_name(book_id, category_name)
+
     async def _create_category_relationships_from_raw(self, book_id: str, raw_categories: Any):
         """Create category relationships from raw category data (strings or list).
 
         Applies genre normalisation and filtering before persisting so that only
-        canonical English genres are stored, with a cap of 5 per book.
+        canonical English genres are stored, with a cap of 5 per book. Intended
+        for automated/imported metadata (OPDS sync, CSV import, API results) -
+        see _create_category_relationships_unfiltered for explicit user input.
         """
         try:
             from app.utils.genre_filter import filter_genres, normalize_hierarchical_genre, normalize_genre
             import re as _re
 
-            # Coerce input to a list of strings
-            if isinstance(raw_categories, str):
-                raw_list = [cat.strip() for cat in raw_categories.split(',') if cat.strip()]
-            elif isinstance(raw_categories, list):
-                raw_list = [str(cat).strip() for cat in raw_categories if str(cat).strip()]
-            else:
-                logger.warning(f"⚠️ Unknown raw_categories format: {type(raw_categories)}")
+            raw_list = self._coerce_raw_categories_to_list(raw_categories)
+            if not raw_list:
                 return
 
             # Normalize and filter to canonical genres (max 5 per book)

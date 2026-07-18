@@ -3124,7 +3124,11 @@ def edit_book(uid):
                 filtered_data[k] = v
         
         try:
-            success = book_service.update_book_sync(uid, str(current_user.id), **filtered_data)
+            # categories_unfiltered=True: the genres above came from the user
+            # directly (edit-book category picker), not automated/imported
+            # metadata, so skip the canonical-genre allowlist that path
+            # otherwise applies - see _update_categories_async.
+            success = book_service.update_book_sync(uid, str(current_user.id), categories_unfiltered=True, **filtered_data)
         except Exception as e:
             import traceback
             traceback.print_exc()
@@ -4540,7 +4544,9 @@ def bulk_update_book_categories():
                 updated_count += 1
                 continue
 
-            result = book_service.update_book_sync(uid, user_id, raw_categories=final_categories)
+            # categories_unfiltered=True: these categories came from the
+            # user's own bulk-selection UI, not automated/imported metadata.
+            result = book_service.update_book_sync(uid, user_id, raw_categories=final_categories, categories_unfiltered=True)
             if result is not None:
                 updated_count += 1
             else:
@@ -5108,7 +5114,9 @@ def add_book_manual():
         if fd: updates['finish_date']=fd
         if raw_categories: updates['raw_categories']=raw_categories
         if updates:
-            try: book_service.update_book_sync(created.uid, str(current_user.id), **updates)
+            # categories_unfiltered=True: these came from the user's own Add
+            # Book form, not automated/imported metadata.
+            try: book_service.update_book_sync(created.uid, str(current_user.id), categories_unfiltered=True, **updates)
             except Exception: pass
 
     # Invalidate/bump the user's library cache version so the new book shows immediately

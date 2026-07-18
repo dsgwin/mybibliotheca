@@ -110,8 +110,18 @@ class KuzuServiceFacade:
         return self.book_service.get_book_by_id_sync(book_id)
     
     def update_book_sync(self, book_id: str, user_id: str, **kwargs) -> Optional[Book]:
-        """Update a book with filtering for relationship-specific updates."""
-        
+        """Update a book with filtering for relationship-specific updates.
+
+        kwargs may include the reserved key `categories_unfiltered` (bool,
+        default False): when raw_categories/categories are also present,
+        this controls whether they're run through the canonical-genre
+        allowlist (default, for automated/imported metadata) or stored
+        exactly as given (for deliberate user category selection - see
+        _update_categories_async for why that distinction matters). It is
+        popped out here and never treated as a book field.
+        """
+        categories_unfiltered = bool(kwargs.pop('categories_unfiltered', False))
+
         # Separate different types of updates based on correct architecture:
         # 1. Book metadata (global) - Book table
         # 2. Personal standard fields (personal) - HAS_PERSONAL_METADATA relationship (replaces legacy OWNS)
@@ -306,7 +316,7 @@ class KuzuServiceFacade:
         # Update categories if present
         if category_updates and 'raw_categories' in category_updates:
             try:
-                success = run_async(self._update_categories_async(book_id, category_updates['raw_categories']))
+                success = run_async(self._update_categories_async(book_id, category_updates['raw_categories'], unfiltered=categories_unfiltered))
                 if success:
                     pass  # Success logged elsewhere
                 else:
@@ -690,8 +700,22 @@ class KuzuServiceFacade:
             traceback.print_exc()
             return False
 
-    async def _update_categories_async(self, book_id: str, raw_categories: Any) -> bool:
-        """Update category relationships for a book."""
+    async def _update_categories_async(self, book_id: str, raw_categories: Any, unfiltered: bool = False) -> bool:
+        """Update category relationships for a book.
+
+        By default, raw_categories are run through the canonical-genre
+        allowlist (_create_category_relationships_from_raw) - appropriate
+        for automated/imported metadata (e.g. Audiobookshelf sync), which
+        can be messy and benefits from normalization.
+
+        Pass unfiltered=True for deliberate user category selection (e.g.
+        editing a book's genres directly via a "type to search existing
+        genres or add new ones" UI, or a bulk category assignment the user
+        picked themselves): there's nothing to normalize away there, and
+        silently dropping a name the user chose because it isn't in the
+        allowlist is confusing - the category node gets created, but the
+        book never actually gets linked to it, with no error shown.
+        """
         try:
             # First, remove all existing category relationships for this book
             delete_query = """
@@ -699,13 +723,16 @@ class KuzuServiceFacade:
             DELETE r
             """
             result = safe_execute_kuzu_query(delete_query, {"book_id": book_id})
-            
-            # Then add the new category relationships using the existing method
+
+            # Then add the new category relationships
             if raw_categories:
-                await self.book_repo._create_category_relationships_from_raw(book_id, raw_categories)
-            
+                if unfiltered:
+                    await self.book_repo._create_category_relationships_unfiltered(book_id, raw_categories)
+                else:
+                    await self.book_repo._create_category_relationships_from_raw(book_id, raw_categories)
+
             return True
-            
+
         except Exception as e:
             traceback.print_exc()
             return False
