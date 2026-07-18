@@ -504,6 +504,10 @@ class KuzuServiceFacade:
     def get_category_book_id_map_for_user_sync(self, user_id: str) -> Dict[str, List[str]]:
         """Get category_id -> [book_id, ...] mapping for a user's library in a single query."""
         return self.category_service.get_category_book_id_map_for_user_sync(user_id)
+
+    def get_uncategorized_book_count_sync(self) -> int:
+        """Count of Book nodes with zero categories assigned."""
+        return self.category_service.get_uncategorized_book_count_sync()
     
     def search_categories_sync(self, query: str, limit: int = 10, user_id: Optional[str] = None) -> List[Dict[str, Any]]:
         """Search categories by name or description."""

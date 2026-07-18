@@ -291,10 +291,14 @@ class KuzuCategoryService:
                 descendant_ids.append(category_id)  # Include the category itself
 
                 if effective_user_id:
+                    # OPTIONAL MATCH: category assignment is a book-level property in
+                    # this app's universal-library model, not a per-user one - a
+                    # required MATCH here would incorrectly exclude categorized books
+                    # the user hasn't separately attached personal metadata to.
                     query = """
                     MATCH (b:Book)-[:CATEGORIZED_AS]->(c:Category)
                     WHERE c.id IN $category_ids
-                    MATCH (u:User {id: $user_id})-[:HAS_PERSONAL_METADATA]->(b)
+                    OPTIONAL MATCH (u:User {id: $user_id})-[:HAS_PERSONAL_METADATA]->(b)
                     RETURN DISTINCT b
                     ORDER BY b.title ASC
                     """
@@ -315,9 +319,10 @@ class KuzuCategoryService:
                 )
             else:
                 if effective_user_id:
+                    # OPTIONAL MATCH - see comment in the include_subcategories branch above.
                     query = """
                     MATCH (b:Book)-[:CATEGORIZED_AS]->(c:Category {id: $category_id})
-                    MATCH (u:User {id: $user_id})-[:HAS_PERSONAL_METADATA]->(b)
+                    OPTIONAL MATCH (u:User {id: $user_id})-[:HAS_PERSONAL_METADATA]->(b)
                     RETURN b
                     ORDER BY b.title ASC
                     """
@@ -612,19 +617,24 @@ class KuzuCategoryService:
             return {}
 
     async def get_category_book_id_map_for_user(self, user_id: str) -> Dict[str, List[str]]:
-        """Get, in a single query, every (category_id -> [book_id, ...]) mapping for a
-        user's library. Used to compute per-category book counts and a de-duplicated
-        total book count without issuing one query per category (N+1)."""
+        """Get, in a single query, every (category_id -> [book_id, ...]) mapping across
+        the whole (universal) library. Used to compute per-category book counts and a
+        de-duplicated total book count without issuing one query per category (N+1).
+
+        Takes user_id for query tracking/logging only - category assignment is a
+        book-level property in this app's universal-library model, not a per-user
+        one, so results are intentionally not filtered by HAS_PERSONAL_METADATA
+        (that used to be required here and silently excluded categorized books the
+        user hadn't separately attached personal metadata to)."""
         try:
             query = """
             MATCH (b:Book)-[:CATEGORIZED_AS]->(c:Category)
-            MATCH (u:User {id: $user_id})-[:HAS_PERSONAL_METADATA]->(b)
             RETURN c.id, b.id
             """
 
             raw_result = safe_execute_kuzu_query(
                 query=query,
-                params={"user_id": user_id},
+                params={},
                 user_id=user_id,
                 operation="get_category_book_id_map_for_user"
             )
@@ -644,6 +654,37 @@ class KuzuCategoryService:
             logger.warning(f"Error building category book id map: {e}")
             return {}
 
+    async def get_uncategorized_book_count(self) -> int:
+        """Count of Book nodes with zero CATEGORIZED_AS relationships.
+
+        MyBibliotheca uses a universal library model (/books/library shows
+        every Book node, not a per-user-owned subset - HAS_PERSONAL_METADATA
+        is optional per-user annotation, not membership). Category
+        assignment is likewise a book-level property, not user-scoped, so
+        this is intentionally a global count with no user filter, matching
+        how the library's own total book count is computed."""
+        try:
+            query = """
+            MATCH (b:Book)
+            OPTIONAL MATCH (b)-[:CATEGORIZED_AS]->(c:Category)
+            WITH b, COUNT(c) AS cat_count
+            WHERE cat_count = 0
+            RETURN COUNT(b)
+            """
+            raw_result = safe_execute_kuzu_query(
+                query=query,
+                params={},
+                user_id=None,
+                operation="get_uncategorized_book_count"
+            )
+            results = _convert_query_result_to_list(raw_result)
+            if results:
+                val = results[0].get('result') if 'result' in results[0] else results[0].get('col_0')
+                return int(val) if isinstance(val, (int, float, str)) else 0
+        except Exception as e:
+            logger.warning(f"Error counting uncategorized books: {e}")
+        return 0
+
     # Sync wrappers for backward compatibility
     def get_category_book_counts_sync(self) -> Dict[str, int]:
         """Get book counts for all categories (sync version)."""
@@ -652,6 +693,10 @@ class KuzuCategoryService:
     def get_category_book_id_map_for_user_sync(self, user_id: str) -> Dict[str, List[str]]:
         """Get category_id -> [book_id, ...] mapping for a user's library (sync version)."""
         return run_async(self.get_category_book_id_map_for_user(user_id))
+
+    def get_uncategorized_book_count_sync(self) -> int:
+        """Count of Book nodes with zero categories assigned (sync version)."""
+        return run_async(self.get_uncategorized_book_count())
     
     def list_all_categories_sync(self) -> List[Dict[str, Any]]:
         """Get all categories (sync version)."""

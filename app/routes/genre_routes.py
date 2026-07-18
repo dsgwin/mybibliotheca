@@ -220,20 +220,26 @@ def index():
         for book_ids in book_ids_by_category.values():
             counted_books.update(book_ids)
         total_book_count = len(counted_books)
-        
-        return render_template('genres/index.html', 
-                             categories=categories, 
+
+        # Books with no genre/category assigned at all - total_book_count
+        # above only counts categorized books, so this closes the gap
+        # against the library's total book count.
+        uncategorized_book_count = book_service.get_uncategorized_book_count_sync()
+
+        return render_template('genres/index.html',
+                             categories=categories,
                              pagination=pagination,
                              valid_per_page=valid_per_page,
                              root_categories=root_categories,
                              total_book_count=total_book_count,
                              subcategory_count=subcategory_count,
-                             total_category_count=total_category_count)
+                             total_category_count=total_category_count,
+                             uncategorized_book_count=uncategorized_book_count)
         
     except Exception as e:
         current_app.logger.error(f"Error loading genres index: {e}")
         flash('Error loading categories.', 'error')
-        return render_template('genres/index.html', categories=[], pagination=None)
+        return render_template('genres/index.html', categories=[], pagination=None, uncategorized_book_count=0)
 
 @genres_bp.route('/hierarchy')
 @login_required

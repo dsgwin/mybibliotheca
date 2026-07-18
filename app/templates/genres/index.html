@@ -80,6 +80,9 @@
                         <div class="card-body text-center">
                             <h3 class="text-info">{{ total_book_count }}</h3>
                             <p class="mb-0">Total Books</p>
+                            {% if uncategorized_book_count > 0 %}
+                            <p class="mb-0 small text-muted">+{{ uncategorized_book_count }} uncategorized</p>
+                            {% endif %}
                         </div>
                     </div>
                 </div>
