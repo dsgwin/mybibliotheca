@@ -66,7 +66,11 @@ def bump_user_library_version(user_id: str) -> int:
     with _version_lock:
         current = int(_user_versions.get(user_id, 0)) + 1
         _user_versions[user_id] = current
-        return current
+    # Every caller of this function represents a change to the user's book
+    # data, so the cached total-book count (book_routes.library(), TTL 300s)
+    # is stale as of this call — evict it rather than waiting out the TTL.
+    _cache.delete(f"total_count:{user_id}")
+    return current
 
 
 def get_config_version() -> int:
