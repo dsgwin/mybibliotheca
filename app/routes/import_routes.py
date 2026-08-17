@@ -1973,13 +1973,35 @@ async def process_simple_import(import_config):
             if uniq:
                 max_batch_size = 50
                 aggregated_metadata = {}
+                total_isbns = len(uniq)
+                # This whole batch-enrichment pass can take minutes on a large CSV
+                # (each ISBN queries Google Books + OpenLibrary, up to 20s each) and
+                # used to run with no progress update at all, so the UI just showed
+                # "Current: Unknown" for the entire duration. Report a fetched/total
+                # counter as each ISBN lookup completes so it's visibly moving.
+                _update_import_progress(
+                    user_id, task_id,
+                    updates={'status': 'analyzing', 'metadata_total': total_isbns, 'metadata_fetched': 0, 'current_book': None}
+                )
+
+                def _on_metadata_progress(done: int, total: int, isbn: str) -> None:
+                    _update_import_progress(
+                        user_id, task_id,
+                        updates={'status': 'analyzing', 'metadata_fetched': done, 'metadata_total': total, 'current_book': isbn}
+                    )
+
                 for start in range(0, len(uniq), max_batch_size):
                     batch = uniq[start:start + max_batch_size]
                     if not batch:
                         continue
                     if _META_DEBUG_FLAG:
                         logger.debug(f"[IMPORT][METADATA][BATCH_EXEC] offset={start} size={len(batch)} sample={batch[:3]}")
-                    chunk_metadata = batch_fetch_book_metadata(batch)
+                    chunk_metadata = batch_fetch_book_metadata(
+                        batch,
+                        progress_cb=_on_metadata_progress,
+                        progress_start=start,
+                        progress_total=total_isbns,
+                    )
                     if chunk_metadata:
                         aggregated_metadata.update(chunk_metadata)
                 book_metadata = aggregated_metadata
@@ -2609,11 +2631,16 @@ def start_import_job(task_id, csv_file_path, field_mappings, user_id, **kwargs):
     
     return task_id
 
-def batch_fetch_book_metadata(isbns):
+def batch_fetch_book_metadata(isbns, progress_cb=None, progress_start=0, progress_total=None):
     """Batch fetch metadata using the unified aggregator for a list of ISBNs.
 
     Noise reduction: only warnings for empty results, errors for exceptions/batch failures.
     Enable METADATA_DEBUG=1 for detailed per-ISBN diagnostics.
+
+    progress_cb, if given, is called as (done, total, isbn) after each lookup
+    completes (throttled to PROGRESS_EMIT_INTERVAL, always fires on the last
+    one) — progress_start/progress_total let the caller report a running
+    count across multiple chunked calls to this function.
     """
     if _META_DEBUG_FLAG:
         logger.debug(f"[IMPORT][METADATA][BATCH_START] size={len(isbns)} isbns={isbns}")
@@ -2733,10 +2760,22 @@ def batch_fetch_book_metadata(isbns):
         except Exception as exc:  # pragma: no cover - defensive logging path
             return idx, isbn, None, None, exc
 
+    completed_count = 0
+    last_progress_emit = time.perf_counter()
     with ThreadPoolExecutor(max_workers=max_workers) as executor:
         futures = [executor.submit(_fetch_single, idx, isbn) for idx, isbn in valid_entries]
         for future in as_completed(futures):
             idx, isbn, data, provider_errors, exc = future.result()
+            completed_count += 1
+            if progress_cb is not None:
+                now = time.perf_counter()
+                is_last = completed_count == len(valid_entries)
+                if is_last or (now - last_progress_emit) >= PROGRESS_EMIT_INTERVAL:
+                    try:
+                        progress_cb(progress_start + completed_count, progress_total or len(valid_entries), isbn)
+                    except Exception:
+                        pass
+                    last_progress_emit = now
             if exc is not None:
                 logger.error(
                     f"[IMPORT][METADATA] Exception fetching ISBN {isbn}: {exc}",

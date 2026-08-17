@@ -536,9 +536,13 @@ function updateProgress() {
                 if (data.status === 'analyzing') {
                     jobStatus.textContent = 'Analyzing';
                     jobStatus.className = 'badge bg-info';
-                    
-                    document.getElementById('statusMessage').innerHTML = 
-                        `<i class="fas fa-search fa-spin"></i> Analyzing CSV file and identifying distinct books...`;
+
+                    const metaMsg = (typeof data.metadata_total === 'number' && data.metadata_total > 0)
+                        ? `Fetching book metadata: ${data.metadata_fetched || 0}/${data.metadata_total}` +
+                          (data.current_book ? ` (ISBN ${data.current_book})` : '')
+                        : 'Analyzing CSV file and identifying distinct books...';
+                    document.getElementById('statusMessage').innerHTML =
+                        `<i class="fas fa-search fa-spin"></i> ${metaMsg}`;
                 } else if (data.status === 'processing') {
                     jobStatus.textContent = 'Processing';
                     jobStatus.className = 'badge bg-primary';
