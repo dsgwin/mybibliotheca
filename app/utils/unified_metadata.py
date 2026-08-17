@@ -24,6 +24,13 @@ _REQUEST_TIMEOUT = int(os.getenv('METADATA_REQUEST_TIMEOUT', '8'))
 # Overall fetch timeout for parallel provider requests (default 20 seconds total)
 _FETCH_TIMEOUT = int(os.getenv('METADATA_FETCH_TIMEOUT', '20'))
 
+# OpenLibrary's API guidelines ask clients to identify themselves; the
+# default python-requests User-Agent is a common target for bot throttling
+# and Cloudflare challenges on both providers, so send a descriptive one.
+_HTTP_HEADERS = {
+	'User-Agent': 'MyBibliotheca/1.0 (+https://github.com/dsgwin/mybibliotheca)'
+}
+
 
 def _normalize_isbn_value(val: Optional[str]) -> str:
 	"""Return an uppercase ISBN string stripped of separators (or empty string)."""
@@ -126,7 +133,7 @@ def _extract_series_label(val: Any) -> Optional[str]:
 def _load_openlibrary_edition_payload(isbn: str) -> Dict[str, Any]:
 	"""Fetch the edition JSON for an ISBN (best-effort)."""
 	try:
-		resp = requests.get(f"https://openlibrary.org/isbn/{isbn}.json", timeout=_REQUEST_TIMEOUT)
+		resp = requests.get(f"https://openlibrary.org/isbn/{isbn}.json", timeout=_REQUEST_TIMEOUT, headers=_HTTP_HEADERS)
 		resp.raise_for_status()
 		return resp.json() or {}
 	except Exception:
@@ -304,7 +311,7 @@ def _fetch_google_by_isbn(isbn: str) -> Dict[str, Any]:
 	if api_key:
 		url += f"&key={api_key}"
 	try:
-		resp = requests.get(url, timeout=_REQUEST_TIMEOUT)
+		resp = requests.get(url, timeout=_REQUEST_TIMEOUT, headers=_HTTP_HEADERS)
 		resp.raise_for_status()
 		data = resp.json()
 		items = data.get('items') or []
@@ -389,7 +396,7 @@ def _fetch_google_by_isbn(isbn: str) -> Dict[str, Any]:
 				full_url = f"https://www.googleapis.com/books/v1/volumes/{vol_id}?projection=full"
 				if api_key:
 					full_url += f"&key={api_key}"
-				full_resp = requests.get(full_url, timeout=_REQUEST_TIMEOUT)
+				full_resp = requests.get(full_url, timeout=_REQUEST_TIMEOUT, headers=_HTTP_HEADERS)
 				full_resp.raise_for_status()
 				full_data = full_resp.json() or {}
 				fvi = (full_data.get('volumeInfo') or {})
@@ -499,7 +506,7 @@ def _fetch_openlibrary_by_isbn(isbn: str) -> Dict[str, Any]:
 			target_isbn13 = _isbn10_to_13(target_norm)
 	edition_payload = _load_openlibrary_edition_payload(isbn)
 	try:
-		resp = requests.get(url, timeout=_REQUEST_TIMEOUT)
+		resp = requests.get(url, timeout=_REQUEST_TIMEOUT, headers=_HTTP_HEADERS)
 		resp.raise_for_status()
 		data = resp.json() or {}
 		ol = data.get(bibkey) or {}
